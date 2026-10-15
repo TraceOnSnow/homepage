@@ -1,0 +1,59 @@
+{
+  "name": "traceonsnow-payload",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint src tests scripts playwright.config.ts *.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:integration": "tsx --test tests/integration/*.test.ts",
+    "test:e2e": "playwright test",
+    "payload": "payload",
+    "generate:types": "payload generate:types",
+    "generate:importmap": "payload generate:importmap",
+    "db:migrate": "payload migrate",
+    "db:migration": "payload migrate:create",
+    "setup": "node scripts/setup.mjs",
+    "import:legacy": "python3 scripts/import-legacy.py",
+    "test:providers:live": "tsx scripts/provider-smoke.ts"
+  },
+  "dependencies": {
+    "@payloadcms/db-sqlite": "3.90.2",
+    "@payloadcms/next": "3.90.2",
+    "@payloadcms/richtext-lexical": "3.90.2",
+    "@payloadcms/translations": "3.90.2",
+    "@payloadcms/ui": "3.90.2",
+    "dotenv": "^16.6.1",
+    "fast-xml-parser": "5.11.2",
+    "graphql": "^16.11.0",
+    "next": "16.3.7",
+    "payload": "3.90.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sharp": "0.35.5",
+    "undici": "7.30.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "16.3.7",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "npm@11.19.0",
+  "overrides": {
+    "payload": {
+      "undici": "^7.29.1"
+    }
+  }
+}

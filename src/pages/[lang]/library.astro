@@ -1,0 +1,11 @@
+---
+import { libraryConfig } from '@lib/config/site';
+import { getLocaleStaticPaths } from '../_shared/utils';
+import LibraryPage from '../library.astro';
+export const getStaticPaths = libraryConfig.enabled ? getLocaleStaticPaths : async () => [];
+interface Props {
+  locale: string;
+}
+const { locale } = Astro.props;
+---
+<LibraryPage locale={locale} />

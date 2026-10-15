@@ -1,0 +1,38 @@
+---
+import HomeSider from '@components/layout/HomeSider.astro';
+import { LibraryCollection } from '@components/library/LibraryCollection';
+import Cover from '@components/ui/cover/Cover.astro';
+import Layout from '@layouts/Layout.astro';
+import TwoColumnLayout from '@layouts/TwoColumnLayout.astro';
+import { libraryConfig, siteConfig } from '@lib/config/site';
+import { getPostSlug, getSortedPosts } from '@lib/content';
+import { attachArticles } from '@lib/library/data';
+import { loadLibraryWorks } from '@lib/library/server';
+import { defaultLocale, localizedPath, t } from '@/i18n';
+
+interface Props {
+  locale?: string;
+}
+if (!libraryConfig.enabled) return Astro.redirect('/404');
+const { locale = defaultLocale } = Astro.props;
+const records = await loadLibraryWorks();
+const posts = await getSortedPosts(locale);
+const works = attachArticles(
+  records,
+  posts.map((post) => ({
+    title: post.data.title,
+    url: localizedPath(`/post/${getPostSlug(post)}`, locale),
+    works: post.data.works,
+    draft: post.data.draft,
+  })),
+);
+---
+<Layout locale={locale} title={`${t(locale, 'library.title')} | ${siteConfig.title}`} description={t(locale, 'library.description')}>
+  <TwoColumnLayout>
+    <Cover compact slot="cover" title={t(locale, 'library.title')} />
+    <HomeSider slot="sider" />
+    <div class="index-surface shadow-box flex flex-col gap-8">
+      <LibraryCollection works={works} locale={locale} client:load />
+    </div>
+  </TwoColumnLayout>
+</Layout>

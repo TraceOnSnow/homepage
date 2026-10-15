@@ -1,0 +1,74 @@
+# Library 最小集成
+
+入口为 `/library`，导航显示“作品库”。页面复用 Koharu 的 Bangumi 卡片网格、类型切换、状态筛选和 24 条分页，没有增加复杂管理前端或独立作品详情页。
+
+## 运行与更新
+
+在根目录 `.env` 中配置：
+
+```dotenv
+PAYLOAD_URL=http://127.0.0.1:3000
+```
+
+这个地址只用于开发服务器和构建进程，不需要登录、API key 或 Provider 凭据。Payload 仍是作品数据唯一来源。
+
+分别启动：
+
+```sh
+# 终端一
+cd services/payload
+npm run dev
+
+# 终端二，在仓库根目录
+pnpm dev
+```
+
+打开 http://localhost:4321/library。开发模式刷新页面会重新读取公开作品。静态发布时，先保存后台作品，再在根目录运行 `pnpm build`，随后发布新的 `dist/`。
+
+构建自动读取所有公开 API 分页，只序列化展示字段。访客不请求 Works API；筛选与分页在浏览器内完成。已配置的后台读取失败会终止构建，不发布空数据。未设置 `PAYLOAD_URL` 时仍可独立构建 Koharu，Library 显示空列表；完整 Library 构建需要后台数据服务可访问。
+
+卡片展示名称、封面、个人评分、状态、发行年份和简短感想。未评分时留空，0 分正常展示，不使用社区评分。上传封面优先于外部封面；卡片标题链接到资料来源。
+
+上传与外部图片仍由对应媒体地址提供。部署时 Payload 的 `SERVER_URL` 应生成访客可访问的媒体 URL；构建用的地址可以与公开媒体地址不同。关闭后台不会影响已构建的文字/筛选，但其托管的图片可能不可用。
+
+## 关联 Markdown 文章
+
+在文章 frontmatter 的 `works` 中填写 Payload Works 的 slug：
+
+```yaml
+---
+title: 我的游戏体验
+link: playing-tunic
+date: 2026-10-13
+works:
+  - tunic
+---
+```
+
+文章发布后，相关作品卡片出现“相关文章”链接，点击进入 Koharu 原生文章页。草稿不显示。多语言页面按 Koharu 原生文章翻译/回退规则生成链接；只翻译 UI，不翻译作品标题或感想。修改作品 slug 后，需要同步文章中的引用。
+
+文章继续保存为 Git Markdown，不写入 Payload Posts。Koharu 写作室保留原有 YAML 字段；第一版直接编辑源码中的 `works`，没有新增复杂选择器。
+
+## 改样式的位置
+
+- `src/components/library/LibraryCollection.tsx`：类型、状态与分页，按原 Bangumi 交互改造。
+- `src/components/library/LibraryCard.tsx`：卡片展示与文章链接。
+- `src/styles/components/bangumi.css`：沿用原样式；目前未改动此文件。
+- `src/lib/library/data.ts`：公开 API 字段映射、分页和文章关联。
+
+`data-work-slug`、`data-library-type`、`data-library-status` 可以作为后续定制样式的定位点。中文/英文 Library UI 已提供，其他语言沿用主题的默认文案回退。
+
+## 检查
+
+```sh
+pnpm test:library
+pnpm test
+pnpm check
+pnpm lint
+# 需要已构建的独立 Payload、对应 Playwright Chromium
+pnpm test:library:browser
+```
+
+浏览器回归使用临时真实 Payload 数据库，创建八类作品和上传封面，构建静态页面，验证筛选/分页/文章跳转/私密与草稿排除，以及后台停止后的阅读。测试会覆盖当前 `dist/`，结束后删除测试文章；正式发布前运行一次普通 `pnpm build`，恢复真实作品与内容的输出。
+
+GitHub 自动部署、服务器 Nginx 路由、媒体托管和生产 Docker 验证留在部署阶段处理。

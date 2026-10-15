@@ -1,0 +1,49 @@
+name: traceonsnow-payload
+
+x-application: &application
+  image: traceonsnow-payload:${APP_IMAGE_TAG:-local}
+  build:
+    context: .
+  env_file:
+    - ./deploy/.env.production
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: file:/app/storage/database/payload.db
+    MEDIA_DIR: /app/storage/media
+  volumes:
+    - type: bind
+      source: ${HOST_DATA_DIR:-/opt/traceonsnow/payload-data}/database
+      target: /app/storage/database
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${HOST_DATA_DIR:-/opt/traceonsnow/payload-data}/media
+      target: /app/storage/media
+      bind:
+        create_host_path: false
+
+services:
+  app:
+    <<: *application
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  migrate:
+    <<: *application
+    profiles: ["tools"]
+    restart: "no"
+    command: ["node", "node_modules/payload/bin.js", "migrate"]

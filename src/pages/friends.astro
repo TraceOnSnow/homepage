@@ -1,0 +1,26 @@
+---
+import FriendsContent from '@components/friends/FriendsContent.astro';
+import HomeSider from '@components/layout/HomeSider.astro';
+import Cover from '@components/ui/cover/Cover.astro';
+import { siteConfig } from '@constants/site-config';
+import Layout from '@layouts/Layout.astro';
+import TwoColumnLayout from '@layouts/TwoColumnLayout.astro';
+import { defaultLocale, t } from '@/i18n';
+
+interface Props {
+  locale?: string;
+}
+
+// Root pages render the default locale; `[lang]/` mirrors pass their locale in explicitly.
+const { locale = defaultLocale } = Astro.props;
+const title = `${t(locale, 'friends.title')} | ${siteConfig.title}`;
+const description = t(locale, 'friends.title');
+---
+
+<Layout locale={locale} title={title} description={description}>
+  <TwoColumnLayout>
+    <Cover slot="cover" title={t(locale, 'friends.title')} compact />
+    <HomeSider slot="sider" />
+    <FriendsContent locale={locale} />
+  </TwoColumnLayout>
+</Layout>
