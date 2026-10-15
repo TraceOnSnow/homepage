@@ -67,9 +67,36 @@ def read_works():
             raise ValueError('Unexpected empty API page')
     else:
         raise ValueError('Works API exceeded pagination limit')
-    if not docs:
-        raise ValueError('Refusing to replace existing Library with empty data')
     return docs, hashlib.sha256(json.dumps(docs, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def read_content():
+    works, digest = read_works()
+    posts = []
+    if os.environ.get('CONTENT_SOURCE', 'files') == 'payload':
+        token = os.environ.get('CONTENT_BUILD_TOKEN', '')
+        if len(token) < 32:
+            raise ValueError('Private CONTENT_BUILD_TOKEN is required for article publishing')
+        for page in range(1, 1001):
+            request = urllib.request.Request(
+                f'http://127.0.0.1:3000/api/content/posts?page={page}',
+                headers={'Authorization': 'Bearer ' + token})
+            with urllib.request.urlopen(request, timeout=20) as response:
+                data = json.load(response)
+            if not isinstance(data.get('docs'), list) or not isinstance(data.get('hasNextPage'), bool):
+                raise ValueError('Invalid article snapshot; keeping existing site')
+            for post in data['docs']:
+                if post.get('_status') != 'published':
+                    raise ValueError('Unpublished article in build snapshot')
+                posts.append(post)
+            if not data['hasNextPage']:
+                break
+            if not data['docs']:
+                raise ValueError('Empty article page claims more results')
+        else:
+            raise ValueError('Article pagination limit exceeded')
+        digest = hashlib.sha256(json.dumps({'works': works, 'posts': posts}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return works, posts, digest
 
 
 class Cards(HTMLParser):
@@ -109,7 +136,7 @@ def main(refresh=False):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return
-        docs, digest = read_works()
+        docs, posts, digest = read_content()
         pending_file = evidence / 'library-pending.json'
         published_digest = json.loads(STATE.read_text()).get('digest') if STATE.exists() else None
         if refresh and digest == published_digest:
@@ -122,17 +149,28 @@ def main(refresh=False):
         log = evidence / ('library-build-' + stamp + '.log')
         build_env = os.environ.copy()
         build_env['PAYLOAD_URL'] = 'http://127.0.0.1:3000'
+        snapshot = evidence / ('content-build-' + stamp + '.json')
+        with snapshot.open('x') as output:
+            json.dump({'works': docs, 'posts': posts}, output)
+        build_env['CONTENT_BUILD_SNAPSHOT'] = str(snapshot)
         print('Building updated Library; log:', log, flush=True)
         # A failed build or worker restart must not trigger a build every minute.
         pending = json.loads(pending_file.read_text())
         pending['retry_after_epoch'] = time.time() + FAILURE_RETRY_SECONDS
         write_json(pending_file, pending)
-        with log.open('x') as output:
-            subprocess.run([
-                '/usr/bin/npm', 'exec', '--offline', '--yes', '--package=pnpm@10.28.2',
-                '--', 'pnpm', 'build',
-            ], cwd=REPO, env=build_env, stdout=output, stderr=subprocess.STDOUT, check=True)
-        _, after = read_works()
+        try:
+            with log.open('x') as output:
+                subprocess.run([
+                    '/usr/bin/npm', 'exec', '--offline', '--yes', '--package=pnpm@10.28.2',
+                    '--', 'pnpm', 'build',
+                ], cwd=REPO, env=build_env, stdout=output, stderr=subprocess.STDOUT, check=True)
+        except Exception:
+            pending['retry_after_epoch'] = time.time() + FAILURE_RETRY_SECONDS
+            write_json(pending_file, pending)
+            raise
+        finally:
+            snapshot.unlink(missing_ok=True)
+        _, _, after = read_content()
         if after != digest:
             write_json(pending_file, {'digest': after, 'last_change_epoch': time.time()})
             print('Works changed during build; retaining current site and restarting quiet period')

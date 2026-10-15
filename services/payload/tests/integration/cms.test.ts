@@ -14,7 +14,7 @@ test('SQLite Works/Media CRUD, admin authentication, and anonymous access', asyn
     const { default: config } = await import('../../src/payload.config')
     payload = await getPayload({ config })
     await payload.db.migrate()
-    assert.ok(!('posts' in payload.collections))
+    assert.ok('posts' in payload.collections)
     assert.ok(!('projects' in payload.collections))
     const owner = await payload.create({ collection: 'users', data: { email: 'owner@example.test', password: 'test-password-123' } })
     const user = { ...owner, collection: 'users' as const }

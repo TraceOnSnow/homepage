@@ -21,4 +21,5 @@ export interface LibraryWork {
   sourceUrl?: string;
   note?: string;
   articles: ArticleLink[];
+  articleId?: number | string;
 }

@@ -122,7 +122,7 @@ try {
       'src',
       /library-fixture.*200.*300|library-fixture.*640.*480|library-fixture/,
     );
-    await expect(unscored.getByRole('link', { name: 'Library integration article' })).toHaveAttribute(
+    await expect(unscored.getByRole('link', { name: 'Public note for game 0' })).toHaveAttribute(
       'href',
       '/post/library-integration-article',
     );
@@ -140,15 +140,12 @@ try {
     }
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await page.goto(`${origin}/en/library`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('h1').filter({ hasText: 'Library' })).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: 'Experience List' })).toBeVisible();
     await expect(page.locator('[data-library-type="game"]')).toContainText('Games');
     await expect(
-      page.locator('[data-work-slug="library-test-game-0"]').getByRole('link', { name: 'Library integration article' }),
+      page.locator('[data-work-slug="library-test-game-0"]').getByRole('link', { name: 'Public note for game 0' }),
     ).toHaveAttribute('href', '/en/post/library-integration-article');
-    await page
-      .locator('[data-work-slug="library-test-game-0"]')
-      .getByRole('link', { name: 'Library integration article' })
-      .click();
+    await page.locator('[data-work-slug="library-test-game-0"]').getByRole('link', { name: 'Public note for game 0' }).click();
     await expect(page.getByRole('article').getByText('Article linked to a public Work.', { exact: true })).toBeVisible();
     assert.deepEqual(errors, []);
     await context.close();

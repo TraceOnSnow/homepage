@@ -12,6 +12,18 @@ function requireWork(input: unknown, origin = base) {
 
 const work = { id: 1, slug: 'a-game', title: 'A game', type: 'game', visibility: 'public' };
 
+test('Payload uses one selected article with language fallback and never revives stale Markdown associations', () => {
+  const displayed = requireWork({ ...work, article: { id: 7, markdown: 'must-not-ship', title: 'backend title' } });
+  const localized = { payloadId: 8, payloadIds: [7, 8], title: 'Translated title', url: '/en/post/review' };
+  assert.deepEqual(attachArticles([displayed], [localized], true)[0].articles, [
+    { title: 'Translated title', url: '/en/post/review' },
+  ]);
+  const legacy = { title: 'Legacy', url: '/post/old', works: ['a-game'] };
+  assert.deepEqual(attachArticles([displayed], [legacy], true)[0].articles, []);
+  assert.deepEqual(attachArticles([displayed], [{ ...localized, draft: true }], true)[0].articles, []);
+  assert.ok(!JSON.stringify(displayed).includes('must-not-ship'));
+});
+
 test('Library exports only public display fields and personal ratings, preserving a zero rating', () => {
   assert.equal(publicLibraryWork({ ...work, visibility: 'private', note: 'private note' }, base), undefined);
   const displayed = requireWork(

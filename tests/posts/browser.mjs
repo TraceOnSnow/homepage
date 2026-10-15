@@ -1,0 +1,133 @@
+// Real import/migration -> frozen Payload snapshot -> native Astro -> static browser.
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { chromium, expect } from '@playwright/test';
+
+const root = process.cwd();
+const backend = path.join(root, 'services/payload');
+const directory = await mkdtemp(path.join(tmpdir(), 'homepage-posts-browser-'));
+const plan = path.join(directory, 'plan.json');
+const snapshot = path.join(directory, 'snapshot.json');
+const env = {
+  ...process.env,
+  NODE_ENV: 'production',
+  DISABLE_PAYLOAD_HMR: 'true',
+  NEXT_TELEMETRY_DISABLED: '1',
+  PAYLOAD_SECRET: 'isolated-post-browser-secret-not-production',
+  DATABASE_URL: `file:${directory}/payload.db`,
+  MEDIA_DIR: `${directory}/media`,
+  POSTS_FIXTURE_SNAPSHOT: snapshot,
+};
+const children = [];
+let browser;
+function start(command, args, options = {}) {
+  const child = spawn(command, args, { cwd: root, env, ...options, stdio: ['ignore', 'pipe', 'pipe'] });
+  children.push(child);
+  let output = '';
+  child.stdout.on('data', (data) => {
+    output += data;
+  });
+  child.stderr.on('data', (data) => {
+    output += data;
+  });
+  child.output = () => output;
+  return child;
+}
+async function run(command, args, options, expected = 0) {
+  const child = start(command, args, options);
+  const code = await new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('exit', resolve);
+  });
+  assert.equal(code, expected, child.output().slice(-6000));
+  return child.output();
+}
+try {
+  await run('pnpm', ['content:plan', 'src/content/blog', plan]);
+  await run(process.execPath, ['node_modules/payload/bin.js', 'migrate'], { cwd: backend });
+  await run(process.execPath, ['--import', 'tsx', 'scripts/import-markdown.ts', plan], { cwd: backend });
+  await run(process.execPath, ['--import', 'tsx', 'scripts/import-markdown.ts', plan, '--apply'], { cwd: backend });
+  const refused = await run(
+    process.execPath,
+    ['--import', 'tsx', 'scripts/import-markdown.ts', plan, '--apply'],
+    { cwd: backend },
+    1,
+  );
+  assert.ok(refused.includes('would be overwritten'));
+  await run(process.execPath, ['--import', 'tsx', 'tests/helpers/posts-snapshot.ts'], { cwd: backend });
+  await run('pnpm', ['build'], {
+    env: {
+      ...env,
+      CONTENT_SOURCE: 'payload',
+      CONTENT_BUILD_SNAPSHOT: snapshot,
+      PAYLOAD_URL: 'http://127.0.0.1:3399',
+      CONTENT_BUILD_TOKEN: 'test-build-only-credential-at-least-32-chars',
+    },
+  });
+  const html = await readFile('dist/post/protected-review/index.html', 'utf8');
+  assert.ok(!html.includes('PROTECTED BODY MUST NEVER BE PUBLISHED IN PLAINTEXT'));
+  await assert.rejects(readFile('dist/post/protected-review.md'));
+  await assert.rejects(readFile('dist/post/private-draft/index.html'));
+  const preview = start('pnpm', ['preview', '--host', '127.0.0.1', '--port', '4333']);
+  for (let attempt = 0; attempt < 120; attempt++) {
+    try {
+      if ((await fetch('http://127.0.0.1:4333')).ok) break;
+    } catch {
+      /* startup */
+    }
+    if (preview.exitCode !== null) throw new Error(preview.output());
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  browser = await chromium.launch();
+  for (const width of [1440, 390]) {
+    const page = await browser.newPage({ viewport: { width, height: 940 } });
+    const errors = [];
+    const requests = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/api/')) requests.push(request.url());
+    });
+    await page.goto('http://127.0.0.1:4333/library');
+    const fallback = page.locator('[data-work-slug="fallback-work"]');
+    await expect(fallback.getByRole('link', { name: 'Native Markdown review', exact: true })).toBeVisible();
+    await expect(fallback.getByRole('link')).toHaveCount(1);
+    const own = page.locator('[data-work-slug="own-reaction"]');
+    await expect(own.getByRole('link', { name: 'MY SHORT REACTION' })).toHaveAttribute('href', '/post/native-review');
+    const draft = page.locator('[data-work-slug="draft-work"]');
+    await expect(draft).toContainText('Draft article remains a gray note');
+    await expect(draft.getByRole('link')).toHaveCount(0);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+    await fallback.getByRole('link').click();
+    await expect(page.locator('.custom-content ins')).toHaveText('Highlighted');
+    await expect(page.locator('.custom-content')).toContainText('Native note');
+    await page.goto('http://127.0.0.1:4333/post/markdown-notes');
+    await expect(page.locator('.custom-content')).toContainText('文本格式');
+    await expect(page.locator('.custom-content img[src*="Mikoto"]')).toHaveCount(1);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(requests, []);
+    await page.close();
+  }
+  await writeFile(snapshot, JSON.stringify({ works: [], posts: [] }));
+  await run('pnpm', ['build'], {
+    env: { ...env, CONTENT_SOURCE: 'payload', CONTENT_BUILD_SNAPSHOT: snapshot, PAYLOAD_URL: 'http://127.0.0.1:3399' },
+  });
+  await assert.rejects(readFile('dist/post/native-review/index.html'));
+  assert.ok(!(await readFile('dist/library/index.html', 'utf8')).includes('data-work-slug='));
+  console.log(
+    'PASS: 38-file transactional import, overwrite refusal, native Markdown, protected/draft privacy, single article links, title fallback, original reactions, desktop/mobile and no visitor API calls',
+  );
+} finally {
+  await browser?.close();
+  for (const child of children) {
+    if (child.exitCode !== null || child.signalCode !== null) continue;
+    const ended = new Promise((resolve) => child.once('exit', resolve));
+    child.kill('SIGTERM');
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 5000);
+    await ended;
+    clearTimeout(timeout);
+  }
+  await rm(directory, { recursive: true, force: true });
+}

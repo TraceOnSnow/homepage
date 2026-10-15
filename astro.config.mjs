@@ -43,6 +43,7 @@ import { remarkShokaSpoiler } from './src/lib/markdown/remark-shoka-spoiler.ts';
 import { collapsibleCodeTransformer } from './src/lib/markdown/shiki-collapsible-transformer.ts';
 import { shokaMetaTransformer } from './src/lib/markdown/shiki-meta-transformer.ts';
 import { SHIKI_THEMES } from './src/lib/markdown/shiki-themes.ts';
+import { syncPosts } from './src/lib/posts/snapshot.ts';
 
 // Load YAML config directly with Node.js (before Vite plugins are available)
 // This is only used in astro.config.mjs - other files use @rollup/plugin-yaml
@@ -242,6 +243,28 @@ export default defineConfig({
     },
   },
   integrations: [
+    {
+      name: 'payload-markdown',
+      hooks: {
+        'astro:config:setup': async () => {
+          if (env.CONTENT_SOURCE === 'payload') {
+            const snapshot = env.CONTENT_BUILD_SNAPSHOT
+              ? JSON.parse(fs.readFileSync(env.CONTENT_BUILD_SNAPSHOT, 'utf8'))
+              : undefined;
+            if (snapshot && !Array.isArray(snapshot.posts)) throw new Error('Invalid frozen article snapshot.');
+            await syncPosts({
+              base: env.PAYLOAD_URL || '',
+              token: env.CONTENT_BUILD_TOKEN || '',
+              directory: path.resolve('.cache/payload-posts/content'),
+              publicOrigin: yamlConfig.site.url,
+              posts: snapshot?.posts,
+            });
+          } else if (env.CONTENT_SOURCE && env.CONTENT_SOURCE !== 'files') {
+            throw new Error('CONTENT_SOURCE must be files or payload.');
+          }
+        },
+      },
+    },
     ...(editorConfig.enabled ? [editorIntegration()] : []),
     {
       name: 'content-hydration',

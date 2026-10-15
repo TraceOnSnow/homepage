@@ -7,6 +7,8 @@
     "node": ">=22.20.0"
   },
   "scripts": {
+    "content:plan": "tsx scripts/plan-post-import.ts",
+    "test:posts:browser": "node tests/posts/browser.mjs",
     "dev": "pnpm koharu migrate --check && astro dev",
     "generate:lqips": "npx tsx src/scripts/generateLqips.ts",
     "generate:similarities": "npx tsx src/scripts/generateSimilarities.ts",
@@ -67,7 +69,7 @@
     "acceptance": "pnpm build && node acceptance/scripts/run.mjs",
     "acceptance:report": "node acceptance/scripts/report.mjs",
     "acceptance:open": "node acceptance/scripts/report.mjs && node acceptance/scripts/open.mjs",
-    "test:library": "tsx --test src/lib/library/*.test.ts",
+    "test:library": "tsx --test src/lib/library/*.test.ts src/lib/posts/*.test.ts",
     "test:library:browser": "node tests/library/browser.mjs"
   },
   "dependencies": {

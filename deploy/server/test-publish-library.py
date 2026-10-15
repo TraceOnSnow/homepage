@@ -2,6 +2,7 @@
 """Exercise publication with temporary files, fake time and no network/builds."""
 import importlib.util
 import json
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -40,9 +41,9 @@ class PublicationTests(unittest.TestCase):
             self.addCleanup(item.stop)
 
     def tick(self, seconds, digest, build, after=None):
-        responses = [(self.docs, digest), (self.docs, after or digest)]
+        responses = [(self.docs, [], digest), (self.docs, [], after or digest)]
         with patch.object(publisher.time, 'time', return_value=10000 + seconds), \
-             patch.object(publisher, 'read_works', side_effect=responses), \
+             patch.object(publisher, 'read_content', side_effect=responses), \
              patch.object(publisher.subprocess, 'run', build):
             publisher.main()
 
@@ -88,6 +89,48 @@ class PublicationTests(unittest.TestCase):
             self.tick(60, 'published', build)
             self.assertFalse(self.pending.exists())
             build.assert_not_called()
+
+    def test_valid_empty_works_is_distinct_from_a_failed_api(self):
+        with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(b'{"docs":[],"hasNextPage":false}')):
+            self.assertEqual(publisher.read_works()[0], [])
+        with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(b'{"error":"unavailable"}')):
+            with self.assertRaises(ValueError):
+                publisher.read_works()
+
+    def test_last_work_removal_publishes_an_empty_library(self):
+        self.docs = []
+        (self.repo / 'dist/library/index.html').write_text('<p>Empty library</p>')
+        with patch.object(publisher, 'expected_slugs', return_value=set()), \
+             patch.object(publisher.subprocess, 'run') as build:
+            self.tick(0, 'empty-library', build)
+            self.tick(180, 'empty-library', build)
+            self.assertEqual(json.loads(self.state.read_text())['public_works'], 0)
+            self.assertEqual(build.call_count, 1)
+
+    def test_unlinked_article_edits_join_the_same_digest(self):
+        with patch.dict(os.environ, {'CONTENT_SOURCE': 'payload', 'CONTENT_BUILD_TOKEN': 'test-build-token-at-least-32-characters'}), \
+             patch.object(publisher, 'read_works', return_value=(self.docs, 'same-works')):
+            def read(markdown):
+                body = json.dumps({'docs': [{'id': 1, '_status': 'published', 'markdown': markdown}], 'hasNextPage': False}).encode()
+                with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(body)):
+                    return publisher.read_content()[2]
+            self.assertNotEqual(read('original'), read('edited'))
+            self.assertNotEqual(read('original'), read(''))
+
+    def test_failure_retry_starts_when_a_long_build_finishes(self):
+        now = [10000.0]
+        with patch.object(publisher.time, 'time', side_effect=lambda: now[0]), \
+             patch.object(publisher, 'read_content', return_value=(self.docs, [], 'changed')):
+            publisher.main()
+            now[0] += 180
+            def fail(*args, **kwargs):
+                now[0] += 600
+                raise subprocess.CalledProcessError(1, 'synthetic')
+            with patch.object(publisher.subprocess, 'run', side_effect=fail):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    publisher.main()
+            self.assertEqual(json.loads(self.pending.read_text())['retry_after_epoch'], now[0] + 300)
+            self.assertFalse(list((self.base / 'evidence').glob('content-build-*.json')))
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ const workSchema = z.object({
   createdAt: z.string().nullish(),
   experiences: z.array(z.object({ startedOn: z.string().nullish(), endedOn: z.string().nullish() })).nullish(),
   note: z.string().nullish(),
+  article: z.union([z.number(), z.string(), z.object({ id: z.union([z.number(), z.string()]) })]).nullish(),
   coverUrl: z.string().nullish(),
   cover: z
     .union([
@@ -63,6 +64,7 @@ export function publicLibraryWork(input: unknown, base: string): LibraryWork | u
     sourceUrl: work.sources?.map((source) => safePublicURL(source.url)).find(Boolean),
     note: work.note || undefined,
     articles: [],
+    articleId: typeof work.article === 'object' ? work.article?.id : (work.article ?? undefined),
   };
 }
 
@@ -112,7 +114,8 @@ export async function fetchLibraryWorks(base: string, fetcher: typeof fetch = fe
 
 export function attachArticles(
   works: LibraryWork[],
-  posts: Array<ArticleLink & { works?: string[]; draft?: boolean }>,
+  posts: Array<ArticleLink & { works?: string[]; draft?: boolean; payloadId?: number; payloadIds?: number[] }>,
+  payloadMode = false,
 ): LibraryWork[] {
   const index = new Map<string, ArticleLink[]>();
   for (const post of posts) {
@@ -123,5 +126,15 @@ export function attachArticles(
       index.set(slug, articles);
     }
   }
-  return works.map((work) => ({ ...work, articles: index.get(work.slug) ?? [] }));
+  return works.map((work) => {
+    const article = posts.find(
+      (post) =>
+        !post.draft &&
+        [post.payloadId, ...(post.payloadIds ?? [])].some((id) => id !== undefined && String(id) === String(work.articleId)),
+    );
+    return {
+      ...work,
+      articles: article ? [{ title: article.title, url: article.url }] : payloadMode ? [] : (index.get(work.slug) ?? []),
+    };
+  });
 }

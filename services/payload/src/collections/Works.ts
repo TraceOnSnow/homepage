@@ -31,7 +31,12 @@ export const Works: CollectionConfig = {
     ] },
     { name: 'rating', label: {zh: '个人评分', en: 'Rating'}, type: 'number', min: 0, max: 10, admin: { step: 0.1, description: { zh: '个人评分，0–10；未评分时留空。', en: 'Personal rating, 0–10; leave blank if unrated.' } } },
     { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'planned' }, tags,
-    { name: 'note', label: {zh: '感想 / 笔记', en: 'Reaction / Notes'}, type: 'textarea' },
+    { name: 'note', label: {zh: '短感受', en: 'Short reaction'}, type: 'textarea', admin: {
+      components: { Field: '/components/admin/ReactionField#ReactionField' },
+      description: { zh: '留空时显示关联文章标题；占位文字不会保存到短感受。', en: 'Empty reactions use the article title; placeholder text is never saved.' },
+    } },
+    { name: 'article', label: { zh: '关联文章', en: 'Article' }, type: 'relationship', relationTo: 'posts', hasMany: false,
+      admin: { description: { zh: '可选择、新建或编辑一篇文章。短感受留空时，前台显示文章标题；不会自动改写短感受。', en: 'Choose, create or edit one article. Empty reactions display its title without copying it.' } } },
     { name: 'experiences', label: {zh: '体验记录', en: 'Experiences'}, type: 'array', fields: [
       { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'completed' },
       { name: 'startedOn', label: {zh: '开始日期', en: 'Started on'}, type: 'date' }, { name: 'endedOn', label: {zh: '结束日期', en: 'Ended on'}, type: 'date' },

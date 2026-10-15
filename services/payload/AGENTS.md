@@ -10,4 +10,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Backend Scope
 
-This directory is an independent npm application. Keep the existing lockfile and verified provider implementations. Only Works, Media and Users are registered; do not add Posts or visitor pages. Database schema push is disabled; use committed migrations. Never apply migrations or edit files in `../../legacy/`. Use disposable SQLite/media paths for tests. Local secrets, storage, and browser results are ignored.
+This directory is an independent npm application. Keep the existing lockfile and verified providers. Works, Media, Users and Markdown Posts are registered; retain the old rich-text `posts` tables as history and use `cms_posts` for new articles. There are no visitor pages. Database schema push is disabled; review migrations and preserve old data. Bulk Markdown import defaults to dry-run and enables transactions only for explicit `--apply`. Never apply migrations or edit files in `../../legacy/`. Use disposable SQLite/media paths for tests. Local secrets, storage, and browser results are ignored.

@@ -25,7 +25,7 @@
 - `web/compose.yaml`：Nginx 与工具 profile 中的 Certbot，使用固定镜像摘要。80 重定向到 HTTPS，ACME 验证路径除外。
 - HTTPS `/admin`、`/_next/`、`/api/` 经 Docker 私网转发到 Payload。认证使用现有账号；匿名不能写作品或读取管理员数据。
 - `/api/media/file/` 只读挂载上传目录，允许 GET/HEAD；上传仍通过认证 API。
-- `publish-library.py`：读取真实公开 Works，最后一次变化后静默 180 秒才构建。锁保证串行执行，构建中数据变化重新等待，成功后原子切换静态版本，失败保留旧站。
+- `publish-library.py`：文件模式观察公开 Works；Payload 模式同时观察所有已发布文章（包括未关联文章）。最后一次变化后静默 180 秒才构建，文章与作品共用冻结输入及一把锁；构建中数据变化重新等待，成功后原子切换静态版本，失败保留旧站。
 - `systemd/homepage-library-publish.*`：每分钟观察数据，不代表每分钟构建。
 - `systemd/homepage-cert-renew.*` 与 `web/renew-cert.sh`：每日检查证书续期并热加载本项目 Nginx。
 
@@ -55,12 +55,11 @@ systemctl --user status homepage-library-publish.timer --no-pager
 systemctl --user status homepage-cert-renew.timer --no-pager
 ```
 
-前端代码更新而公开数据未变化时，`python3 publish-library.py --refresh` 可显式构建发布；同时有新数据时仍遵守静默期。没有 Git Push 自动部署或在线文章管理。首次迁移、证书申请和恢复操作需按当次实际状态单独制定步骤，不要盲目重跑初始化。
+前端代码更新而公开数据未变化时，`python3 publish-library.py --refresh` 可显式构建发布；同时有新数据时仍遵守静默期。没有 Git Push 自动部署。在线文章管理需要按 [文章部署交接](../../docs/posts-deployment.md) 完成迁移及来源切换。首次迁移、证书申请和恢复操作需按当次实际状态单独制定步骤，不要盲目重跑初始化。
 
 ## 已知边界
 
-- 当前 API 查询正常但公开条目为零时，发布器会拒绝替换现有 Library。将最后一条设为私密或删除后，旧站仍可能保留原条目；后续需在 WSL 区分合法空清单与 API 失败，再修改此行为。
-- 现有失败退避时间从构建启动时计算，长时间构建失败后的等待语义需要在 WSL 进一步审查。
+- 合法空清单可以发布，API 失败不会清空网站；长时间构建失败后从结束时开始退避。对应修复随本轮源码交付，尚需部署到运行目录。
 - 全面备份恢复、所有上传路径及公网账号真实写入流程尚未做完整验收；运行状态不能当作这些检查已完成。
 
 产品讨论及下一阶段开发范围见 [开发交接](../../docs/development-handoff.md)。

@@ -15,6 +15,8 @@ export interface BlogSchema {
   tags?: string[];
   /** Related Payload Works, identified by their stable slugs. */
   works?: string[];
+  payloadId?: number;
+  payloadIds?: number[];
   subtitle?: string;
   catalog?: boolean;
   categories?: string[] | string[][];

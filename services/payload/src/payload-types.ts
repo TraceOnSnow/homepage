@@ -70,6 +70,7 @@ export interface Config {
     users: User;
     works: Work;
     media: Media;
+    posts: Post;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -80,6 +81,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     works: WorksSelect<false> | WorksSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    posts: PostsSelect<false> | PostsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -184,7 +186,14 @@ export interface Work {
   rating?: number | null;
   status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
   tags?: string[] | null;
+  /**
+   * Empty reactions use the article title; placeholder text is never saved.
+   */
   note?: string | null;
+  /**
+   * Choose, create or edit one article. Empty reactions display its title without copying it.
+   */
+  article?: (number | null) | Post;
   experiences?:
     | {
         status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
@@ -231,6 +240,55 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "posts".
+ */
+export interface Post {
+  id: number;
+  title: string;
+  /**
+   * Raw Markdown, rendered by Koharu.
+   */
+  markdown?: string | null;
+  /**
+   * 首次自动生成；改标题不改变链接。
+   */
+  link?: string | null;
+  locale: 'zh' | 'en' | 'ja' | 'ko';
+  publishedAt: string;
+  description?: string | null;
+  tags?: string[] | null;
+  cover?: (number | null) | Media;
+  /**
+   * Koharu 分类数组，例如 ["笔记"] 或 [["笔记", "前端"]]。
+   */
+  categories?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * 保留原生 Markdown 选项；标题、链接、日期和草稿状态以上方字段为准。
+   */
+  frontmatter?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  protectedContent?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -264,6 +322,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'posts';
+        value: number | Post;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -360,6 +422,7 @@ export interface WorksSelect<T extends boolean = true> {
   status?: T;
   tags?: T;
   note?: T;
+  article?: T;
   experiences?:
     | T
     | {
@@ -406,6 +469,26 @@ export interface MediaSelect<T extends boolean = true> {
               filename?: T;
             };
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "posts_select".
+ */
+export interface PostsSelect<T extends boolean = true> {
+  title?: T;
+  markdown?: T;
+  link?: T;
+  locale?: T;
+  publishedAt?: T;
+  description?: T;
+  tags?: T;
+  cover?: T;
+  categories?: T;
+  frontmatter?: T;
+  protectedContent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

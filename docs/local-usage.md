@@ -1,5 +1,7 @@
 # 本地试用
 
+本文以下是默认 `CONTENT_SOURCE=files` 的原文件模式。Posts 已实现；启用 Payload 文章来源时按 [迁移说明](posts-deployment.md) 先迁移/导入，再使用 `/admin/collections/posts` 写作。该模式本地修改文章后重启 Astro 同步，线上通过现有队列发布。
+
 现在先验证浏览网站、添加作品和写博客。保留 Koharu 原生样式，批量迁移和上线随后处理。
 
 ## 启动三个入口

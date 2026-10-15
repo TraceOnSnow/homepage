@@ -24,7 +24,10 @@ const works = attachArticles(
     url: localizedPath(`/post/${getPostSlug(post)}`, locale),
     works: post.data.works,
     draft: post.data.draft,
+    payloadId: post.data.payloadId,
+    payloadIds: post.data.payloadIds,
   })),
+  import.meta.env.CONTENT_SOURCE === 'payload',
 );
 ---
 <Layout locale={locale} title={`${t(locale, 'library.title')} | ${siteConfig.title}`} description={t(locale, 'library.description')}>

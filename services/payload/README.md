@@ -1,6 +1,6 @@
 # Payload 作品管理后台
 
-独立的 Next.js + Payload Admin/API。复用旧 `zhiheng-homepage` 的 Works、Media、Users、八个 Metadata Provider 和后台搜索组件，不提供博客或个人主页。
+独立的 Next.js + Payload Admin/API。复用 Works、Media、Users、八个 Metadata Provider 和后台搜索组件，新增 Markdown Posts；访客文章页继续由根目录 Koharu 渲染。
 
 ## 本地使用
 
@@ -34,12 +34,18 @@ npm run dev
 
 ## 数据边界
 
-- 只启用 `works`、`media`、`users` Collections；旧 Posts/Projects API 和旧公开页面已移除。
-- Works 的 `relatedPosts` join 已移除；未来文章关联由 Markdown 管理。
+- 启用 `works`、`media`、`users`、`posts` Collections。新 Posts 使用 `cms_posts` 物理表；旧富文本 Posts/Projects 表仍保留，不提供旧公开页面。
+- Works 使用可空的 `article` 单值关系。短感受留空时前台使用文章标题，选择、新建、编辑和改标题不改写短感受。
 - 评分、状态、感想、体验记录、来源 ID、上传封面和作品 ID 保持原结构。
 - SQLite `push: false`，本地与生产统一使用已提交 migrations。沿用旧迁移以兼容旧库，旧文章/项目表保留但不作为新站内容源；生成未来 schema 迁移时审查删除操作。
 - `storage/payload.db` 和 `storage/media/` 持久化。备份时同时保留 SQLite 一致快照、上传文件和恢复所需的本地密钥。
 - Media 是公开图片素材；Works 可设置 private。所有登录账号都是管理员。
+
+## 文章迁移与发布
+
+新迁移只增加文章表及可空关系，保留历史表和现有作品数据。现有库先备份，再执行 `npm run db:migrate`。导入计划在根目录生成，随后 `npm run import:markdown -- /private/plan.json` dry-run；确认清单后加 `--apply`，以事务导入。重复链接或多篇关系冲突拒绝执行，不静默覆盖。完整步骤见 [部署交接](../../docs/posts-deployment.md)。
+
+原生 `/admin/collections/posts` 管理标题、Markdown 正文、草稿/发布及其他元数据；正文不用 Lexical。`CONTENT_BUILD_TOKEN` 仅授权 GET `/api/content/posts` 获取已发布构建快照，包括需由 Koharu 加密的正文；匿名 `/api/posts` 不返回草稿或受保护文章。后台与 Astro 构建使用同一个私密令牌，不能使用 `NEXT_PUBLIC_` 前缀。
 
 ## API 与作品资料
 

@@ -7,6 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "import:markdown": "tsx scripts/import-markdown.ts",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",

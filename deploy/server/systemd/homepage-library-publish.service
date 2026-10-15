@@ -5,6 +5,7 @@ Description=Publish changed public Payload Works to TraceOnSnow
 Type=oneshot
 WorkingDirectory=/home/trace/projects/homepage
 Environment=PATH=/usr/bin:/bin
+EnvironmentFile=/home/trace/projects/homepage-deployment/runtime.env
 ExecStart=/usr/bin/python3 /home/trace/projects/homepage-deployment/publish-library.py
 TimeoutStartSec=1200
 UMask=0077

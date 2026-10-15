@@ -2,7 +2,7 @@ import { defineCollection } from 'astro:content';
 import { COLOPHON_PLACEMENTS, COLOPHON_TONES } from '@lib/config/colophon';
 import { BLOG_CONTENT_GLOB_PATTERN } from '@lib/content/glob';
 import { parseDateInSiteTimezone, reinterpretUtcAsTimezone } from '@lib/date';
-import { glob } from 'astro/loaders';
+import { glob, type LoaderContext } from 'astro/loaders';
 import { z } from 'astro/zod';
 import type { BlogSchema, BlogSchemaInput } from 'types/blog';
 
@@ -42,8 +42,23 @@ const colophonEntrySchema = z.union([
   }),
 ]);
 
+const payloadMode = import.meta.env.CONTENT_SOURCE === 'payload';
+const fileLoader = glob({
+  pattern: BLOG_CONTENT_GLOB_PATTERN,
+  base: payloadMode ? './.cache/payload-posts/content' : './src/content/blog',
+});
 const blogCollection = defineCollection({
-  loader: glob({ pattern: BLOG_CONTENT_GLOB_PATTERN, base: './src/content/blog' }),
+  loader: payloadMode
+    ? {
+        ...fileLoader,
+        name: 'payload-markdown',
+        load: async (context: LoaderContext) => {
+          // The native glob loader returns early for an empty folder; remove stale posts first.
+          context.store.clear();
+          await fileLoader.load(context);
+        },
+      }
+    : fileLoader,
   schema: z.object({
     title: z.string(),
     description: z.string().optional(),
@@ -53,6 +68,8 @@ const blogCollection = defineCollection({
     cover: z.string().optional(),
     tags: z.array(z.string()).optional(),
     works: z.array(z.string().trim().min(1)).optional(),
+    payloadId: z.number().int().positive().optional(),
+    payloadIds: z.array(z.number().int().positive()).optional(),
     // Preserve compatibility with posts migrated from Hexo.
     subtitle: z.string().optional(),
     catalog: z.boolean().optional().default(true),

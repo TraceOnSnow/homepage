@@ -25,8 +25,6 @@ def import_legacy(source: Path, destination: Path) -> dict:
     if (storage / 'media').exists() and any((storage / 'media').iterdir()):
         raise ValueError('Destination media directory is not empty; refusing to overwrite')
     snapshots = sorted((SERVICE_ROOT / 'src/migrations').glob('*.json'))
-    contract = json.loads(snapshots[-1].read_text())['tables']
-    migration_names = re.findall(r"name: '([^']+)'", (SERVICE_ROOT / 'src/migrations/index.ts').read_text())
     stage = Path(tempfile.mkdtemp(prefix='.legacy-import-', dir=destination))
     try:
         original = sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)
@@ -42,10 +40,22 @@ def import_legacy(source: Path, destination: Path) -> dict:
         try:
             if copied.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                 raise ValueError('Source snapshot failed SQLite integrity check')
-            for table, schema in contract.items():
-                columns = {row[1]: row[2].lower() for row in copied.execute(f'PRAGMA table_info("{table}")')}
-                if any(columns.get(name) != item['type'].lower() for name, item in schema['columns'].items()):
-                    raise ValueError(f'Legacy schema does not match the committed migration baseline: {table}')
+            # Match the actual source schema, never mark future migrations applied.
+            baseline = None
+            for snapshot in reversed(snapshots):
+                contract = json.loads(snapshot.read_text())['tables']
+                matches = True
+                for table, schema in contract.items():
+                    columns = {row[1]: row[2].lower() for row in copied.execute(f'PRAGMA table_info("{table}")')}
+                    if any(columns.get(name) != item['type'].lower() for name, item in schema['columns'].items()):
+                        matches = False
+                        break
+                if matches:
+                    baseline = snapshot.stem
+                    break
+            if baseline is None:
+                raise ValueError('Legacy schema does not match a committed migration baseline')
+            migration_names = [name for name in re.findall(r"name: '([^']+)'", (SERVICE_ROOT / 'src/migrations/index.ts').read_text()) if name <= baseline]
             if copied.execute('PRAGMA foreign_key_check').fetchone():
                 raise ValueError('Source snapshot contains foreign-key violations')
             recorded = {row[0] for row in copied.execute('SELECT name FROM payload_migrations')}

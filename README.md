@@ -32,13 +32,15 @@ pnpm preview
 ## 内容与目录
 
 - `config/site.yaml`：域名、作者、头像、导航和可选功能。
-- `src/content/blog/`：Markdown / MDX 文章的唯一权威来源。已迁入《个人 Markdown 语法备忘录》，其余暂保留上游示例，内容随后调整。
+- `src/content/blog/`：当前文件模式的文章；切换到 Payload 模式后作为历史备份，停止编辑。已迁入一篇个人文章，其余为主题示例。
 - `src/pages/about.md`：个人介绍。
 - `cms/`：Koharu 原生本地 Markdown 管理工具。
 - `services/payload/`：已迁移的独立作品管理后台，使用自己的 npm 锁文件；[使用说明](services/payload/README.md)。
 - `legacy/`：两个旧项目的完整本地参考，保留原 Git 历史与未提交修改；不入新仓库，不参与检查、构建或部署。
 
-Payload 只管理作品、媒体和管理员。八个元数据 Provider 为作品补全事实资料，评分、状态和感想由自己填写。Library 已在构建时读取 Payload 的公开作品，修改后通过重建发布生效；[Library 使用与文章关联](docs/library.md)。
+Payload 管理作品、媒体、管理员和 Markdown 文章。八个元数据 Provider 为作品补全事实资料，评分、状态和感想由自己填写。Library 在构建时读取公开作品；每个作品可选择一篇文章，短感受留空时显示文章标题，已有短感受不被覆盖。详见 [Library 使用](docs/library.md)。
+
+文章来源由 `CONTENT_SOURCE=files|payload` 选择，默认保留文件模式。启用 Payload 模式需要先备份、导入、验证，再配置构建只读令牌；操作顺序见 [文章迁移与部署交接](docs/posts-deployment.md)。原生写作室保留为 Markdown 工具，Payload 模式下应在 `/admin` 编辑文章。
 
 ## 作品后台
 
@@ -62,4 +64,4 @@ npm run dev
 - [上游 README](docs/upstream/README.md)
 - [写作室说明](docs/features/editor.md)
 
-保留 Koharu 的 [AGPL-3.0 许可证](LICENSE) 和原有署名。源码通过官方仓库导入，公开仓库为 [TraceOnSnow/homepage](https://github.com/TraceOnSnow/homepage)，保留用于跟踪主题的 `upstream` remote。尚未部署或修改线上服务。
+保留 Koharu 的 [AGPL-3.0 许可证](LICENSE) 和原有署名。源码通过官方仓库导入，公开仓库为 [TraceOnSnow/homepage](https://github.com/TraceOnSnow/homepage)，保留用于跟踪主题的 `upstream` remote。网站已部署腾讯云；本轮文章功能在 WSL 开发，服务器切换需按部署交接执行。
