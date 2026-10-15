@@ -60,4 +60,4 @@ npm run dev
 - [上游 README](docs/upstream/README.md)
 - [写作室说明](docs/features/editor.md)
 
-保留 Koharu 的 [AGPL-3.0 许可证](LICENSE) 和原有署名。源码通过官方仓库导入，目前只建立本地新仓库，并记录只读 `upstream` remote；尚未创建 GitHub 仓库或修改线上服务。
+保留 Koharu 的 [AGPL-3.0 许可证](LICENSE) 和原有署名。源码通过官方仓库导入，公开仓库为 [TraceOnSnow/homepage](https://github.com/TraceOnSnow/homepage)，保留用于跟踪主题的 `upstream` remote。尚未部署或修改线上服务。

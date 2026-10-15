@@ -11,7 +11,7 @@
 
 第一阶段仅个人化配置、头像和 About，隔离本地 legacy 目录，并编写项目文档；另将写作台浏览器测试的 macOS 截图路径改为系统临时目录。博客功能、样式、写作室和 CMS 保留上游实现。CLI 额外修复 GNU tar 对 `manifest.json` / `./manifest.json` 的兼容，增加对应归档读取回归测试。上游说明和 Agent 指引保存在 `docs/upstream/`。主题更新前先备份与审查差异，尤其是 workspace、legacy 排除项、配置与后续 Payload 服务；当前未验证 Koharu 自动更新 CLI 对本项目结构的兼容性。
 
-GitHub 新仓库地址待确定。正式部署前补充实际公开源码地址；站点保留主题署名及许可证，并提供对应源码入口。
+公开源码仓库：[TraceOnSnow/homepage](https://github.com/TraceOnSnow/homepage)。站点保留主题署名及许可证，正式部署时提供对应源码入口。
 
 ## 后续项目扩展
 
