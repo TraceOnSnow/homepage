@@ -7,8 +7,8 @@
 
 export const uiStrings = {
   // Library
-  'nav.library': '作品库',
-  'library.title': '作品库',
+  'nav.library': '体验清单',
+  'library.title': '体验清单',
   'library.description': '玩过、看过和读过的作品，以及自己的评分与感想。',
   'library.all': '全部',
   'library.empty': '暂无作品记录。',
@@ -26,6 +26,15 @@ export const uiStrings = {
   'library.on-hold': '暂停',
   'library.dropped': '已放弃',
   'library.articles': '相关文章',
+  'library.reflections': '有感想',
+  'library.experiencedAt': '体验于',
+  'library.recordedAt': '记录于',
+  'library.sort': '排序',
+  'library.sort.experienced': '最近体验',
+  'library.sort.recorded': '最近添加',
+  'library.sort.oldest': '最早体验',
+  'library.sort.rating': '评分从高到低',
+  'library.sort.title': '标题',
 
   // Index pages
   'index.posts': '篇文章',

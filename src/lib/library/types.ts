@@ -15,6 +15,8 @@ export interface LibraryWork {
   status?: WorkStatus;
   rating?: number;
   year?: string;
+  recordedAt?: string;
+  experiencedAt?: string;
   coverUrl?: string;
   sourceUrl?: string;
   note?: string;

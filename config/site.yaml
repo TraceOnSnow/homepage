@@ -602,7 +602,7 @@ navigation:
         nameKey: nav.archives
         path: /archives
         icon: ri:archive-2-fill
-  - name: 作品库
+  - name: 体验清单
     nameKey: nav.library
     path: /library
     icon: ri:book-2-fill

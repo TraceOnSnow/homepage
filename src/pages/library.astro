@@ -32,7 +32,7 @@ const works = attachArticles(
     <Cover compact slot="cover" title={t(locale, 'library.title')} />
     <HomeSider slot="sider" />
     <div class="index-surface shadow-box flex flex-col gap-8">
-      <LibraryCollection works={works} locale={locale} client:load />
+      <LibraryCollection works={works} locale={locale} timeZone={siteConfig.timezone ?? 'Asia/Shanghai'} client:load />
     </div>
   </TwoColumnLayout>
 </Layout>

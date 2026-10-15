@@ -107,3 +107,22 @@ test('Markdown associations use stable slugs, deduplicate links, and exclude dra
   assert.deepEqual(linked[0].articles, [{ title: 'Article', url: '/post/article' }]);
   assert.equal(works[0].articles.length, 0);
 });
+
+test('personal dates come from experience history and creation, never release year or modification time', () => {
+  const displayed = requireWork({
+    ...work,
+    releaseDate: '1995-07-31T00:00:00Z',
+    createdAt: '2026-03-02T12:00:00Z',
+    updatedAt: '2026-12-01T00:00:00Z',
+    experiences: [
+      { startedOn: '2026-01-01T12:00:00Z', endedOn: '2026-02-01T12:00:00Z', note: 'private-history-detail' },
+      { startedOn: '2026-04-01T12:00:00Z', endedOn: '2026-04-03T12:00:00Z' },
+      { startedOn: 'invalid', endedOn: null },
+    ],
+  });
+  assert.equal(displayed.experiencedAt, '2026-04-03T12:00:00.000Z');
+  assert.equal(displayed.recordedAt, '2026-03-02T12:00:00.000Z');
+  assert.ok(!JSON.stringify(displayed).includes('private-history-detail'));
+  assert.equal(requireWork({ ...work, createdAt: null, experiences: [] }).recordedAt, undefined);
+  assert.equal(requireWork({ ...work, experiences: [{ startedOn: '2026-05-01' }] }).experiencedAt, '2026-05-01T00:00:00.000Z');
+});

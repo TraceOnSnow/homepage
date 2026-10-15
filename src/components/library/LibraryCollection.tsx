@@ -3,6 +3,7 @@ import { useMotionLevel } from '@hooks/useMotionLevel';
 import { useTranslation } from '@hooks/useTranslation';
 import { Icon } from '@iconify/react';
 import { type LibraryWork, WORK_TYPES, type WorkStatus, type WorkType } from '@lib/library/types';
+import { hasReflection, LIBRARY_SORTS, type LibrarySort, sortLibraryWorks } from '@lib/library/view';
 import { getScrollBehavior } from '@lib/motion-level';
 import { cn } from '@lib/utils';
 import { AnimatePresence, m } from 'motion/react';
@@ -33,13 +34,16 @@ function getVisiblePages(totalPages: number, currentPage: number): number[] {
 interface LibraryCollectionProps {
   works: LibraryWork[];
   locale: string;
+  timeZone: string;
 }
 
-export function LibraryCollection({ works, locale }: LibraryCollectionProps) {
+export function LibraryCollection({ works, locale, timeZone }: LibraryCollectionProps) {
   const { t } = useTranslation(locale);
   const [activeTab, setActiveTab] = useState<WorkType | 'all'>('all');
   const [activeFilter, setActiveFilter] = useState<WorkStatus | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [reflectionsOnly, setReflectionsOnly] = useState(false);
+  const [sort, setSort] = useState<LibrarySort>('experienced');
   const shouldReduceMotion = useMotionLevel() === 'reduced';
 
   const tabs = useMemo(
@@ -66,10 +70,16 @@ export function LibraryCollection({ works, locale }: LibraryCollectionProps) {
     return counts;
   }, [tabItems]);
 
-  const filteredItems = useMemo(() => {
-    if (activeFilter === 'all') return tabItems;
-    return tabItems.filter((item) => item.status === activeFilter);
-  }, [tabItems, activeFilter]);
+  const filteredItems = useMemo(
+    () =>
+      sortLibraryWorks(
+        tabItems.filter(
+          (item) => (activeFilter === 'all' || item.status === activeFilter) && (!reflectionsOnly || hasReflection(item)),
+        ),
+        sort,
+      ),
+    [tabItems, activeFilter, reflectionsOnly, sort],
+  );
 
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
   const pageItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -99,7 +109,44 @@ export function LibraryCollection({ works, locale }: LibraryCollectionProps) {
   return (
     <LazyMotionProvider>
       <div ref={shelfRef} className="bangumi-shelf space-y-5" data-library-shelf>
-        <div className="space-y-1">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              data-library-reflections
+              aria-pressed={reflectionsOnly}
+              onClick={() => {
+                setReflectionsOnly(!reflectionsOnly);
+                setCurrentPage(1);
+              }}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs transition-colors',
+                reflectionsOnly
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t('library.reflections')} <span className="tabular-nums">{tabItems.filter(hasReflection).length}</span>
+            </button>
+            <label className="flex items-center gap-2 text-muted-foreground text-xs">
+              {t('library.sort')}
+              <select
+                data-library-sort
+                value={sort}
+                onChange={(event) => {
+                  setSort(event.target.value as LibrarySort);
+                  setCurrentPage(1);
+                }}
+                className="max-w-full rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-xs"
+              >
+                {LIBRARY_SORTS.map((value) => (
+                  <option key={value} value={value}>
+                    {t(`library.sort.${value}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="index-tabs bangumi-type-tabs">
             {tabs.map((tab) => (
               <button
@@ -135,7 +182,7 @@ export function LibraryCollection({ works, locale }: LibraryCollectionProps) {
 
         <AnimatePresence initial={false} mode="popLayout">
           <m.div
-            key={`${activeTab}-${activeFilter}-${currentPage}`}
+            key={`${activeTab}-${activeFilter}-${reflectionsOnly}-${sort}-${currentPage}`}
             className="bangumi-grid"
             initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -143,7 +190,7 @@ export function LibraryCollection({ works, locale }: LibraryCollectionProps) {
             transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
           >
             {pageItems.map((item) => (
-              <LibraryCard key={item.id} item={item} locale={locale} showStatus={activeFilter === 'all'} />
+              <LibraryCard key={item.id} item={item} locale={locale} timeZone={timeZone} showStatus={activeFilter === 'all'} />
             ))}
           </m.div>
         </AnimatePresence>

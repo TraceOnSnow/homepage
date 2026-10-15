@@ -1,8 +1,21 @@
 import { useTranslation } from '@hooks/useTranslation';
 import type { LibraryWork } from '@lib/library/types';
+import { displayDate, formatLibraryDate } from '@lib/library/view';
 
-export function LibraryCard({ item, locale, showStatus }: { item: LibraryWork; locale: string; showStatus: boolean }) {
+export function LibraryCard({
+  item,
+  locale,
+  showStatus,
+  timeZone,
+}: {
+  item: LibraryWork;
+  locale: string;
+  showStatus: boolean;
+  timeZone: string;
+}) {
   const { t } = useTranslation(locale);
+  const date = displayDate(item);
+  const mainArticle = item.articles[0];
   const coverAndTitle = (
     <>
       <div className="bangumi-poster">
@@ -31,15 +44,34 @@ export function LibraryCard({ item, locale, showStatus }: { item: LibraryWork; l
       )}
       <p className="bangumi-meta">
         {showStatus && item.status && item.status !== 'in-progress' && <span>{t(`library.${item.status}`)}</span>}
-        {item.year && <span>{item.year}</span>}
         {item.rating !== undefined && <span className="bangumi-own-score tabular-nums">★ {item.rating}</span>}
       </p>
-      {item.note && <p className="mt-2 line-clamp-3 break-words text-muted-foreground text-xs leading-relaxed">{item.note}</p>}
+      {date && (
+        <p className="mt-1 text-muted-foreground text-xs">
+          {t(item.experiencedAt ? 'library.experiencedAt' : 'library.recordedAt')}{' '}
+          <time dateTime={date}>{formatLibraryDate(date, locale, timeZone)}</time>
+        </p>
+      )}
+      {item.note && (
+        <p className="mt-2 line-clamp-3 break-words text-xs leading-relaxed">
+          {mainArticle ? (
+            <a href={mainArticle.url} className="text-sky-700 underline-offset-4 hover:underline dark:text-sky-400">
+              {item.note}
+            </a>
+          ) : (
+            <span className="text-muted-foreground">{item.note}</span>
+          )}
+        </p>
+      )}
       {item.articles.length > 0 && (
         <div className="mt-2 space-y-1 text-xs">
           <p className="text-muted-foreground">{t('library.articles')}</p>
           {item.articles.map((article) => (
-            <a key={article.url} href={article.url} className="block break-words text-primary hover:underline">
+            <a
+              key={article.url}
+              href={article.url}
+              className="block break-words text-sky-700 hover:underline dark:text-sky-400"
+            >
               {article.title}
             </a>
           ))}

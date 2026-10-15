@@ -8,8 +8,8 @@ import type { UIStrings } from '../types';
 
 export const uiStrings: UIStrings = {
   // Library
-  'nav.library': 'Library',
-  'library.title': 'Library',
+  'nav.library': 'Experience List',
+  'library.title': 'Experience List',
   'library.description': 'Games, books and other works, with personal ratings and notes.',
   'library.all': 'All',
   'library.empty': 'No works yet.',
@@ -27,6 +27,15 @@ export const uiStrings: UIStrings = {
   'library.on-hold': 'On hold',
   'library.dropped': 'Dropped',
   'library.articles': 'Related articles',
+  'library.reflections': 'With reflections',
+  'library.experiencedAt': 'Experienced',
+  'library.recordedAt': 'Recorded',
+  'library.sort': 'Sort',
+  'library.sort.experienced': 'Latest experience',
+  'library.sort.recorded': 'Recently added',
+  'library.sort.oldest': 'Earliest experience',
+  'library.sort.rating': 'Highest rating',
+  'library.sort.title': 'Title',
 
   // Index pages
   'index.posts': 'posts',

@@ -10,6 +10,8 @@ const workSchema = z.object({
   status: z.enum(WORK_STATUSES).nullish(),
   rating: z.number().min(0).max(10).nullish(),
   releaseDate: z.string().nullish(),
+  createdAt: z.string().nullish(),
+  experiences: z.array(z.object({ startedOn: z.string().nullish(), endedOn: z.string().nullish() })).nullish(),
   note: z.string().nullish(),
   coverUrl: z.string().nullish(),
   cover: z
@@ -50,12 +52,24 @@ export function publicLibraryWork(input: unknown, base: string): LibraryWork | u
     status: work.status ?? undefined,
     rating: work.rating ?? undefined,
     year: work.releaseDate?.match(/^\d{4}/)?.[0],
+    recordedAt: validDate(work.createdAt),
+    experiencedAt: work.experiences
+      ?.map((experience) => validDate(experience.endedOn) ?? validDate(experience.startedOn))
+      .filter((date): date is string => Boolean(date))
+      .sort()
+      .at(-1),
     coverUrl:
       safePublicURL(media?.sizes?.card?.url, base) ?? safePublicURL(media?.url, base) ?? safePublicURL(work.coverUrl, base),
     sourceUrl: work.sources?.map((source) => safePublicURL(source.url)).find(Boolean),
     note: work.note || undefined,
     articles: [],
   };
+}
+
+function validDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
 }
 
 export async function fetchLibraryWorks(base: string, fetcher: typeof fetch = fetch): Promise<LibraryWork[]> {
