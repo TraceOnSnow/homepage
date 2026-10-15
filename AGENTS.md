@@ -32,6 +32,12 @@ Use existing `*.test.ts`/`*.test.mjs` suites for affected behavior and the edito
 
 Use focused `feat:`, `fix:`, or `chore:` commits. PRs explain observable behavior, record checks, link relevant issues, and include screenshots for visual changes.
 
+## Development and Deployment Boundary
+
+Implement subsequent source changes in the user's WSL checkout, commit and push there, then deploy reviewed commits to the server. `/home/trace/projects/homepage` is now the production checkout; do not continue feature development there without explicit authorization. Server-side operational data, secrets, certificates and generated releases stay outside Git. Source templates for the existing deployment live in `deploy/server/` and are installed separately into `/home/trace/projects/homepage-deployment/`; do not run them in-place or blindly overwrite the live directory.
+
+See `docs/development-handoff.md` for agreed but unimplemented product designs. Straightforward fixes using existing behavior may proceed within task authorization; new business fields, schema migrations, services, business-rule changes or data rewrites require a concrete plan and user approval. Preserve personal notes, ratings, status and experience dates.
+
 ## Content, Security & Licensing
 
-Markdown in Git is the authoritative article source; do not create Payload Posts. Library reads public Payload Works at build time using `PAYLOAD_URL`; a configured API failure must fail the build. Articles associate via `works` slug arrays. Reuse the existing card styles and filters. Keep provider credentials server-only. Preserve the root AGPL-3.0 license and upstream attribution. Record progress and migration boundaries in `docs/project-status.md`; do not alter production services without explicit authorization.
+Markdown in Git remains the current authoritative article source. Payload Posts and a single-article selector are discussed next-stage designs, not implemented features; do not create or migrate them during deployment or without an approved implementation task. Library reads public Payload Works at build time using `PAYLOAD_URL`; a configured API failure must fail the build. Current articles associate via `works` slug arrays. Reuse the existing card styles and filters. Keep provider credentials server-only. Preserve the root AGPL-3.0 license and upstream attribution. Record progress and migration boundaries in `docs/project-status.md`; do not alter production services without explicit authorization.

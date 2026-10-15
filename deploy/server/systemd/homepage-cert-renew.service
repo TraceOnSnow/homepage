@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew TraceOnSnow HTTPS certificate and reload its Nginx container
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /home/trace/projects/homepage-deployment/web/renew-cert.sh
+TimeoutStartSec=900

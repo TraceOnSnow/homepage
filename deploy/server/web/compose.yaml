@@ -1,0 +1,34 @@
+name: homepage-web
+services:
+  nginx:
+    image: nginx@sha256:ed84151ed2d47ef93c0939eb9b9754c6990db6092cd2081e11988a47a83d47ea
+    restart: unless-stopped
+    networks:
+      - default
+      - payload-backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ../public:/srv/site:ro
+      - ../data/media:/srv/media:ro
+      - ./acme:/var/www/acme:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  certbot:
+    image: certbot/certbot@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
+    profiles: [tools]
+    volumes:
+      - ./acme:/var/www/acme
+      - ./letsencrypt:/etc/letsencrypt
+      - ./certbot-work:/var/lib/letsencrypt
+      - ./certbot-logs:/var/log/letsencrypt
+networks:
+  payload-backend:
+    external: true
+    name: homepage-local-production_default

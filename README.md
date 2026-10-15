@@ -1,5 +1,7 @@
 # TraceOnSnow
 
+现有线上部署源码见 [服务器部署](deploy/server/README.md)；后续在 WSL 开发、服务器仅部署，已讨论但尚未实现的文章管理与关联交互见 [开发交接](docs/development-handoff.md)。
+
 以 [Astro Koharu](https://github.com/cosZone/astro-koharu) 为基础的个人网站，统一域名为 `https://traceonsnow.com`。
 
 ## 本地运行

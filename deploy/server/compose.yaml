@@ -1,0 +1,49 @@
+name: homepage-local-production
+
+x-payload: &payload
+  image: homepage-payload:local-acceptance
+  build:
+    context: ../homepage/services/payload
+  user: "${PAYLOAD_UID:?Set PAYLOAD_UID}:${PAYLOAD_GID:?Set PAYLOAD_GID}"
+  env_file: ./runtime.env
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: file:/app/storage/database/payload.db
+    MEDIA_DIR: /app/storage/media
+    SERVER_URL: "https://traceonsnow.com"
+  volumes:
+    - type: bind
+      source: ${PAYLOAD_DATA_DIR:?Set PAYLOAD_DATA_DIR}/database
+      target: /app/storage/database
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ${PAYLOAD_DATA_DIR:?Set PAYLOAD_DATA_DIR}/media
+      target: /app/storage/media
+      bind:
+        create_host_path: false
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  payload:
+    <<: *payload
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PAYLOAD_PORT:?Set PAYLOAD_PORT}:3000"
+    stop_grace_period: 30s
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/works?limit=1').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+  migrate:
+    <<: *payload
+    profiles: [tools]
+    restart: "no"
+    command: [node, node_modules/payload/bin.js, migrate]

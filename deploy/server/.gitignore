@@ -1,0 +1,16 @@
+runtime.env
+.env
+.env.*
+data/
+incoming/
+backups/
+evidence/
+public/
+__pycache__/
+*.db
+*.db-*
+*.sqlite*
+web/acme/
+web/letsencrypt/
+web/certbot-work/
+web/certbot-logs/

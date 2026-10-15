@@ -1,0 +1,15 @@
+resolver 127.0.0.11 valid=30s ipv6=off;
+set $payload_backend http://payload:3000;
+proxy_pass $payload_backend;
+proxy_http_version 1.1;
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header Connection "";
+proxy_read_timeout 120s;
+proxy_send_timeout 120s;
+proxy_buffering off;
+add_header Cache-Control "no-store" always;
+add_header X-Content-Type-Options nosniff always;

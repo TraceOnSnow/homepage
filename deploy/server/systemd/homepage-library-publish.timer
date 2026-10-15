@@ -1,0 +1,10 @@
+[Unit]
+Description=Observe Works changes; publish only after 3 quiet minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
