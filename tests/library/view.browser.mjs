@@ -25,7 +25,7 @@ try {
     await expect(page.locator('astro-island[component-url*="LibraryCollection"]')).not.toHaveAttribute('ssr', {
       timeout: 20000,
     });
-    await expect(page).toHaveTitle(/体验清单/);
+    await expect(page).toHaveTitle(/媒体库/);
     const cards = page.locator('[data-work-slug]');
     const visibleSlugs = () => cards.evaluateAll((nodes) => nodes.map((node) => node.dataset.workSlug));
     await expect.poll(visibleSlugs).toEqual(slugs(sortLibraryWorks(works)));

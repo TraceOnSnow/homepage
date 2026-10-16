@@ -17,7 +17,12 @@ const children = [];
 let browser;
 
 function start(command, args, options = {}) {
-  const child = spawn(command, args, { cwd: root, ...options, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(command, args, {
+    cwd: root,
+    ...options,
+    detached: process.platform !== 'win32',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   children.push(child);
   let output = '';
   child.stdout.on('data', (chunk) => {
@@ -28,6 +33,15 @@ function start(command, args, options = {}) {
   });
   child.output = () => output;
   return child;
+}
+function signalTree(child, signal) {
+  if (!child.pid) return;
+  try {
+    if (process.platform === 'win32') child.kill(signal);
+    else process.kill(-child.pid, signal);
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
 }
 async function run(command, args, options) {
   const child = start(command, args, options);
@@ -41,7 +55,9 @@ async function ready(url, child) {
   for (let attempt = 0; attempt < 120; attempt++) {
     if (child.exitCode !== null) throw new Error(child.output().slice(-5000));
     try {
-      if ((await fetch(url)).ok) return;
+      const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      await response.body?.cancel();
+      if (response.ok) return;
     } catch {
       /* Wait for local startup. */
     }
@@ -50,10 +66,10 @@ async function ready(url, child) {
   throw new Error(`Server not ready: ${url}`);
 }
 async function stop(child) {
+  signalTree(child, 'SIGTERM');
   if (child.exitCode !== null || child.signalCode !== null) return;
-  const ended = new Promise((resolve) => child.once('exit', resolve));
-  child.kill('SIGTERM');
-  const timeout = setTimeout(() => child.kill('SIGKILL'), 5000);
+  const ended = new Promise((resolve) => child.once('close', resolve));
+  const timeout = setTimeout(() => signalTree(child, 'SIGKILL'), 5000);
   await ended;
   clearTimeout(timeout);
 }
@@ -140,7 +156,7 @@ try {
     }
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await page.goto(`${origin}/en/library`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('h1').filter({ hasText: 'Experience List' })).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: 'Media Library' })).toBeVisible();
     await expect(page.locator('[data-library-type="game"]')).toContainText('Games');
     await expect(
       page.locator('[data-work-slug="library-test-game-0"]').getByRole('link', { name: 'Public note for game 0' }),

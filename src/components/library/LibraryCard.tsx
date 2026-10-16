@@ -1,3 +1,4 @@
+import { ArticleNote } from '@components/common/ArticleNote';
 import { useTranslation } from '@hooks/useTranslation';
 import type { LibraryWork } from '@lib/library/types';
 import { displayDate, formatLibraryDate } from '@lib/library/view';
@@ -52,17 +53,7 @@ export function LibraryCard({
           <time dateTime={date}>{formatLibraryDate(date, locale, timeZone)}</time>
         </p>
       )}
-      {(item.note?.trim() || mainArticle) && (
-        <p className="mt-2 line-clamp-3 break-words text-xs leading-relaxed">
-          {mainArticle ? (
-            <a href={mainArticle.url} className="text-sky-700 underline-offset-4 hover:underline dark:text-sky-400">
-              {item.note?.trim() || mainArticle.title}
-            </a>
-          ) : (
-            <span className="text-muted-foreground">{item.note}</span>
-          )}
-        </p>
-      )}
+      <ArticleNote note={item.note} article={mainArticle} />
     </article>
   );
 }

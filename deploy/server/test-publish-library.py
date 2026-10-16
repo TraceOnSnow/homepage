@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise publication with temporary files, fake time and no network/builds."""
 import importlib.util
+import fcntl
 import json
 import io
 import os
@@ -44,11 +45,11 @@ class PublicationTests(unittest.TestCase):
         responses = [(self.docs, [], digest), (self.docs, [], after or digest)]
         with patch.object(publisher.time, 'time', return_value=10000 + seconds), \
              patch.object(publisher, 'read_content', side_effect=responses), \
-             patch.object(publisher.subprocess, 'run', build):
+             patch.object(publisher, 'run_build', build):
             publisher.main()
 
     def test_each_minute_edit_postpones_and_publishes_only_once(self):
-        with patch.object(publisher.subprocess, 'run') as build:
+        with patch.object(publisher, 'run_build') as build:
             for minute in range(6):
                 self.tick(minute * 60, 'edit-' + str(minute), build)
             self.tick(360, 'edit-5', build)
@@ -63,7 +64,7 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(build.call_count, 1)
 
     def test_edit_during_build_restarts_full_quiet_period(self):
-        with patch.object(publisher.subprocess, 'run') as build:
+        with patch.object(publisher, 'run_build') as build:
             self.tick(0, 'edit-a', build)
             self.tick(180, 'edit-a', build, after='edit-b')
             self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
@@ -73,7 +74,7 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(build.call_count, 1)
 
     def test_failed_build_keeps_site_and_backs_off(self):
-        with patch.object(publisher.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'synthetic-build')) as build:
+        with patch.object(publisher, 'run_build', side_effect=subprocess.CalledProcessError(1, 'synthetic-build')) as build:
             self.tick(0, 'edit-a', build)
             with self.assertRaises(subprocess.CalledProcessError):
                 self.tick(180, 'edit-a', build)
@@ -83,7 +84,7 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(json.loads(self.state.read_text())['digest'], 'published')
 
     def test_revert_to_published_content_cancels_pending_build(self):
-        with patch.object(publisher.subprocess, 'run') as build:
+        with patch.object(publisher, 'run_build') as build:
             self.tick(0, 'temporary-edit', build)
             self.assertTrue(self.pending.exists())
             self.tick(60, 'published', build)
@@ -101,7 +102,7 @@ class PublicationTests(unittest.TestCase):
         self.docs = []
         (self.repo / 'dist/library/index.html').write_text('<p>Empty library</p>')
         with patch.object(publisher, 'expected_slugs', return_value=set()), \
-             patch.object(publisher.subprocess, 'run') as build:
+             patch.object(publisher, 'run_build') as build:
             self.tick(0, 'empty-library', build)
             self.tick(180, 'empty-library', build)
             self.assertEqual(json.loads(self.state.read_text())['public_works'], 0)
@@ -126,11 +127,32 @@ class PublicationTests(unittest.TestCase):
             def fail(*args, **kwargs):
                 now[0] += 600
                 raise subprocess.CalledProcessError(1, 'synthetic')
-            with patch.object(publisher.subprocess, 'run', side_effect=fail):
+            with patch.object(publisher, 'run_build', side_effect=fail):
                 with self.assertRaises(subprocess.CalledProcessError):
                     publisher.main()
             self.assertEqual(json.loads(self.pending.read_text())['retry_after_epoch'], now[0] + 300)
             self.assertFalse(list((self.base / 'evidence').glob('content-build-*.json')))
+
+    def test_code_refresh_publishes_unchanged_content_without_a_new_quiet_period(self):
+        with patch.object(publisher, 'read_content', return_value=(self.docs, [], 'published')), \
+             patch.object(publisher, 'run_build') as build:
+            self.assertTrue(publisher.main(refresh=True))
+            self.assertEqual(build.call_count, 1)
+            self.assertNotEqual(os.readlink(self.base / 'public/current'), 'releases/old')
+
+    def test_deployment_and_content_timer_share_one_lock(self):
+        with (self.base / 'evidence/library-publication.lock').open('a') as lock, \
+             patch.object(publisher, 'read_content') as read:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.assertFalse(publisher.main(refresh=True))
+            read.assert_not_called()
+
+    def test_incomplete_deployment_stops_content_publication(self):
+        (self.base / 'evidence/deployment-blocked').write_text('review required')
+        with patch.object(publisher, 'read_content') as read:
+            with self.assertRaisesRegex(ValueError, 'failed deployment'):
+                publisher.main(refresh=True)
+            read.assert_not_called()
 
 
 if __name__ == '__main__':

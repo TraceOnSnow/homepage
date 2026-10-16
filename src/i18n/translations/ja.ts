@@ -7,6 +7,10 @@
 import type { UIStrings } from '../types';
 
 export const uiStrings: UIStrings = {
+  'nav.library': 'メディアライブラリ',
+  'library.title': 'メディアライブラリ',
+  'projects.title': 'プロジェクト',
+  'projects.open': 'プロジェクトを見る：{title}',
   // Index pages
   'index.posts': '件の投稿',
   'index.years': '年',

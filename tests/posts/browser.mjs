@@ -24,7 +24,13 @@ const env = {
 const children = [];
 let browser;
 function start(command, args, options = {}) {
-  const child = spawn(command, args, { cwd: root, env, ...options, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(command, args, {
+    cwd: root,
+    env,
+    ...options,
+    detached: process.platform !== 'win32',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   children.push(child);
   let output = '';
   child.stdout.on('data', (data) => {
@@ -35,6 +41,15 @@ function start(command, args, options = {}) {
   });
   child.output = () => output;
   return child;
+}
+function signalTree(child, signal) {
+  if (!child.pid) return;
+  try {
+    if (process.platform === 'win32') child.kill(signal);
+    else process.kill(-child.pid, signal);
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
 }
 async function run(command, args, options, expected = 0) {
   const child = start(command, args, options);
@@ -74,7 +89,9 @@ try {
   const preview = start('pnpm', ['preview', '--host', '127.0.0.1', '--port', '4333']);
   for (let attempt = 0; attempt < 120; attempt++) {
     try {
-      if ((await fetch('http://127.0.0.1:4333')).ok) break;
+      const response = await fetch('http://127.0.0.1:4333', { signal: AbortSignal.timeout(2000) });
+      await response.body?.cancel();
+      if (response.ok) break;
     } catch {
       /* startup */
     }
@@ -122,10 +139,10 @@ try {
 } finally {
   await browser?.close();
   for (const child of children) {
+    signalTree(child, 'SIGTERM');
     if (child.exitCode !== null || child.signalCode !== null) continue;
-    const ended = new Promise((resolve) => child.once('exit', resolve));
-    child.kill('SIGTERM');
-    const timeout = setTimeout(() => child.kill('SIGKILL'), 5000);
+    const ended = new Promise((resolve) => child.once('close', resolve));
+    const timeout = setTimeout(() => signalTree(child, 'SIGKILL'), 5000);
     await ended;
     clearTimeout(timeout);
   }

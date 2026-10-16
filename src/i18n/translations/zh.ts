@@ -7,8 +7,8 @@
 
 export const uiStrings = {
   // Library
-  'nav.library': '体验清单',
-  'library.title': '体验清单',
+  'nav.library': '媒体库',
+  'library.title': '媒体库',
   'library.description': '玩过、看过和读过的作品，以及自己的评分与感想。',
   'library.all': '全部',
   'library.empty': '暂无作品记录。',
@@ -35,6 +35,8 @@ export const uiStrings = {
   'library.sort.oldest': '最早体验',
   'library.sort.rating': '评分从高到低',
   'library.sort.title': '标题',
+  'projects.title': '项目',
+  'projects.open': '访问项目：{title}',
 
   // Index pages
   'index.posts': '篇文章',

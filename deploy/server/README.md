@@ -55,7 +55,9 @@ systemctl --user status homepage-library-publish.timer --no-pager
 systemctl --user status homepage-cert-renew.timer --no-pager
 ```
 
-前端代码更新而公开数据未变化时，`python3 publish-library.py --refresh` 可显式构建发布；同时有新数据时仍遵守静默期。没有 Git Push 自动部署。在线文章管理需要按 [文章部署交接](../../docs/posts-deployment.md) 完成迁移及来源切换。首次迁移、证书申请和恢复操作需按当次实际状态单独制定步骤，不要盲目重跑初始化。
+前端代码更新而公开数据未变化时，`python3 publish-library.py --refresh` 可显式构建发布；同时有新数据时仍遵守静默期。仓库已提供 [CI 与手动部署](../../docs/ci-cd.md)，尚需单独安装服务器入口、配置 GitHub 环境并验收，推送不会直接上线。在线文章管理需要按 [文章部署交接](../../docs/posts-deployment.md) 完成迁移及来源切换。首次迁移、证书申请和恢复操作需按当次实际状态单独制定步骤，不要盲目重跑初始化。
+
+`deploy-release.py` 与内容发布器共用锁，使用指定提交及 GHCR 镜像摘要，拒绝待执行的数据库迁移；失败尝试回退应用和静态站，保留数据。`ssh-deploy.py` 是专用 SSH 公钥的受限入口。日常部署只更新已审查的发布器源码，不覆盖生产 Compose、systemd、Nginx 或私密配置。`compose.release.yaml` 是部署器生成的私有镜像覆盖配置；手动管理容器时使用 `docker compose --env-file runtime.env -f compose.yaml -f compose.release.yaml ...`，不要无意切回旧的本地镜像。
 
 ## 已知边界
 

@@ -1,0 +1,72 @@
+---
+import { ArticleNote } from '@components/common/ArticleNote';
+import Divider from '@components/ui/divider';
+import { projects } from '@/data/projects';
+import { localizedPath, t } from '@/i18n';
+import { getPostSlug, getSortedPosts } from '@/lib/content';
+
+interface Props {
+  locale: string;
+}
+const { locale } = Astro.props;
+const posts = (await getSortedPosts(locale)).filter((post) => !post.data.draft);
+---
+
+<section aria-labelledby="projects-heading" class="min-w-0" data-projects>
+  <Divider><span id="projects-heading">{t(locale, 'projects.title')}</span></Divider>
+  <div class="project-grid mt-4 grid gap-x-5 gap-y-6">
+    {projects.map((project) => {
+      const post = project.article ? posts.find((post) => getPostSlug(post) === project.article) : undefined;
+      const article = post ? {
+        title: post.data.title,
+        url: localizedPath(`/post/${getPostSlug(post)}`, locale),
+      } : undefined;
+      return (
+        <article class="min-w-0" data-project-slug={project.slug}>
+          <a href={project.url} target="_blank" rel="noopener noreferrer" class="bangumi-card group"
+            aria-label={t(locale, 'projects.open', { title: project.title })}>
+            <div class="bangumi-poster project-poster">
+              {project.cover ? (
+                <img src={project.cover} alt="" width="1023" height="330" loading="lazy" decoding="async" />
+              ) : (
+                <span class="flex size-full items-center justify-center px-5 text-center font-semibold font-mono text-muted-foreground text-xl" aria-hidden="true">
+                  {project.title.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <h3 class="bangumi-title break-words" title={project.title}>{project.title}</h3>
+          </a>
+          <p class="mt-2 line-clamp-3 break-words text-muted-foreground text-sm leading-relaxed">{project.description}</p>
+          <ArticleNote article={article} />
+        </article>
+      );
+    })}
+  </div>
+</section>
+
+<style>
+  .project-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .project-poster {
+    aspect-ratio: 16 / 10;
+  }
+
+  .project-poster img {
+    object-fit: contain;
+  }
+
+  @media (width <= 767px) {
+    .project-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 0.75rem;
+    }
+  }
+
+  @media (width <= 359px) {
+    .project-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

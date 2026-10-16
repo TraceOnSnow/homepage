@@ -1,6 +1,6 @@
 # TraceOnSnow
 
-现有线上部署源码见 [服务器部署](deploy/server/README.md)；后续在 WSL 开发、服务器仅部署，已讨论但尚未实现的文章管理与关联交互见 [开发交接](docs/development-handoff.md)。
+现有线上部署源码见 [服务器部署](deploy/server/README.md)，推送检查与手动上线见 [CI/CD](docs/ci-cd.md)；后续在 WSL 开发、服务器仅部署，已实现与待办范围见 [开发交接](docs/development-handoff.md)。
 
 以 [Astro Koharu](https://github.com/cosZone/astro-koharu) 为基础的个人网站，统一域名为 `https://traceonsnow.com`。
 
@@ -41,6 +41,8 @@ pnpm preview
 Payload 管理作品、媒体、管理员和 Markdown 文章。八个元数据 Provider 为作品补全事实资料，评分、状态和感想由自己填写。Library 在构建时读取公开作品；每个作品可选择一篇文章，短感受留空时显示文章标题，已有短感受不被覆盖。详见 [Library 使用](docs/library.md)。
 
 文章来源由 `CONTENT_SOURCE=files|payload` 选择，默认保留文件模式。启用 Payload 模式需要先备份、导入、验证，再配置构建只读令牌；操作顺序见 [文章迁移与部署交接](docs/posts-deployment.md)。原生写作室保留为 Markdown 工具，Payload 模式下应在 `/admin` 编辑文章。
+
+顶栏为首页、文章、媒体库、关于、友链。首页项目卡片资料见 `src/data/projects.ts`，截图及开发文章关联说明见 [项目展示](docs/projects.md)。周刊推荐、歌单入口和背景音乐暂时隐藏，动态功能继续关闭。
 
 ## 作品后台
 

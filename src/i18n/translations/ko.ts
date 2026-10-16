@@ -5,6 +5,10 @@
  */
 
 export const uiStrings = {
+  'nav.library': '미디어 라이브러리',
+  'library.title': '미디어 라이브러리',
+  'projects.title': '프로젝트',
+  'projects.open': '프로젝트 보기: {title}',
   // Index pages
   'index.posts': '개 게시물',
   'index.years': '년',

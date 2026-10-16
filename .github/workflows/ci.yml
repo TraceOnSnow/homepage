@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+      CONTENT_SOURCE: files
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.21.0'
+      - run: npm install --global pnpm@10.28.2
+      - run: pnpm install --frozen-lockfile
+      - run: npm ci --no-audit --no-fund
+        working-directory: services/payload
+      - name: Theme and editor checks
+        run: |
+          pnpm lint
+          pnpm check
+          pnpm test
+          pnpm test:editor
+          pnpm --dir cms build
+      - name: Publication and deployment checks
+        run: |
+          python3 deploy/server/test-publish-library.py
+          python3 deploy/server/test-deploy-release.py
+          python3 deploy/ci/test-release.py
+          bash -n deploy/server/preflight.sh deploy/server/web/renew-cert.sh
+      - name: Backend checks and production build
+        working-directory: services/payload
+        env:
+          PAYLOAD_SECRET: disposable-ci-build-secret-not-production
+          DATABASE_URL: file:/tmp/homepage-ci-build.db
+          MEDIA_DIR: /tmp/homepage-ci-media
+          SERVER_URL: http://localhost:3000
+        run: |
+          npm run lint
+          npm run test
+          npm run test:integration
+          npm run build
+          npm run typecheck
+      - name: Backend browser workflow
+        working-directory: services/payload
+        run: |
+          npx playwright install --with-deps chromium --only-shell
+          npm run test:e2e
+      - name: Public site browser workflows
+        run: |
+          pnpm exec playwright install --with-deps chromium --only-shell
+          pnpm test:library:browser
+          pnpm test:posts:browser
+          pnpm build
+
+  image:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Build the release image once
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-payload:sha-${REVISION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "RELEASE_IMAGE=$image" >> "$GITHUB_ENV"
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.revision=$REVISION" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label 'org.opencontainers.image.licenses=AGPL-3.0' \
+            --tag "$image" services/payload
+      - name: Test that exact image with disposable storage
+        run: python3 deploy/ci/smoke-image.py "$RELEASE_IMAGE"
+      - name: Publish tested image and immutable release manifest
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          docker push "$RELEASE_IMAGE"
+          digest_image=$(docker image inspect "$RELEASE_IMAGE" --format '{{index .RepoDigests 0}}')
+          python3 deploy/ci/write-release.py "$digest_image" release.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          name: release-${{ github.sha }}-${{ github.run_attempt }}
+          path: release.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Release summary
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          echo '### Ready for manual deployment' >> "$GITHUB_STEP_SUMMARY"
+          echo "CI run ID: $GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+          cat release.json >> "$GITHUB_STEP_SUMMARY"

@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -127,6 +128,92 @@ process.stdout.write(JSON.stringify(sortLibraryWorks(works).slice(0, 24).map(wor
     return set(json.loads(result.stdout))
 
 
+def run_build(*, env, output):
+    process = subprocess.Popen([
+        '/usr/bin/npm', 'exec', '--offline', '--yes', '--package=pnpm@10.28.2',
+        '--', 'pnpm', 'build',
+    ], cwd=REPO, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        code = process.wait(timeout=600)
+    except BaseException:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+        raise
+    if code:
+        raise subprocess.CalledProcessError(code, 'Astro production build')
+
+
+def publish(refresh=False):
+    """Publish while the caller holds library-publication.lock; return whether it switched."""
+    evidence = BASE / 'evidence'
+    docs, posts, digest = read_content()
+    pending_file = evidence / 'library-pending.json'
+    published_digest = json.loads(STATE.read_text()).get('digest') if STATE.exists() else None
+    if refresh and digest == published_digest:
+        # Explicit code-only deployment; unchanged data requires no new wait.
+        write_json(pending_file, {'digest': digest, 'last_change_epoch': time.time()})
+    else:
+        if wait_for_quiet(pending_file, digest, published_digest, time.time()):
+            return False
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    log = evidence / ('library-build-' + stamp + '.log')
+    build_env = os.environ.copy()
+    build_env['PAYLOAD_URL'] = 'http://127.0.0.1:3000'
+    snapshot = evidence / ('content-build-' + stamp + '.json')
+    with snapshot.open('x') as output:
+        json.dump({'works': docs, 'posts': posts}, output)
+    build_env['CONTENT_BUILD_SNAPSHOT'] = str(snapshot)
+    print('Building updated Library; log:', log, flush=True)
+    # A failed build or worker restart must not trigger a build every minute.
+    pending = json.loads(pending_file.read_text())
+    pending['retry_after_epoch'] = time.time() + FAILURE_RETRY_SECONDS
+    write_json(pending_file, pending)
+    try:
+        with log.open('x') as output:
+            run_build(env=build_env, output=output)
+    except Exception:
+        pending['retry_after_epoch'] = time.time() + FAILURE_RETRY_SECONDS
+        write_json(pending_file, pending)
+        raise
+    finally:
+        snapshot.unlink(missing_ok=True)
+    _, _, after = read_content()
+    if after != digest:
+        write_json(pending_file, {'digest': after, 'last_change_epoch': time.time()})
+        print('Works changed during build; retaining current site and restarting quiet period')
+        return False
+    cards = Cards()
+    cards.feed((REPO / 'dist/library/index.html').read_text())
+    if cards.slugs != expected_slugs(docs):
+        raise ValueError('Built Library does not match public API; retaining current site')
+    if not (REPO / 'dist/pagefind/pagefind.js').is_file():
+        raise ValueError('Search index missing; retaining current site')
+    release = BASE / 'public/releases' / stamp
+    # Public static files must be readable by the existing Nginx worker.
+    shutil.copytree(REPO / 'dist', release)
+    release.chmod(0o755)
+    for item in release.rglob('*'):
+        item.chmod(0o755 if item.is_dir() else 0o644)
+    current = BASE / 'public/current'
+    if not current.is_symlink():
+        raise ValueError('Current site is not the expected deployment symlink')
+    previous = os.readlink(current)
+    staged = BASE / 'public' / ('.current-' + stamp)
+    staged.symlink_to('releases/' + stamp)
+    os.replace(staged, current)
+    record = {
+        'digest': digest, 'published_at_utc': stamp, 'public_works': len(docs),
+        'release': str(release), 'previous': previous, 'build_log': str(log),
+    }
+    write_json(STATE, record)
+    pending_file.unlink(missing_ok=True)
+    print('Published public Works:', len(docs), 'release:', stamp)
+    return True
+
+
 def main(refresh=False):
     os.umask(0o077)
     evidence = BASE / 'evidence'
@@ -135,72 +222,10 @@ def main(refresh=False):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            return
-        docs, posts, digest = read_content()
-        pending_file = evidence / 'library-pending.json'
-        published_digest = json.loads(STATE.read_text()).get('digest') if STATE.exists() else None
-        if refresh and digest == published_digest:
-            # Explicit code-only deployment; unchanged data requires no new wait.
-            write_json(pending_file, {'digest': digest, 'last_change_epoch': time.time()})
-        else:
-            if wait_for_quiet(pending_file, digest, published_digest, time.time()):
-                return
-        stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-        log = evidence / ('library-build-' + stamp + '.log')
-        build_env = os.environ.copy()
-        build_env['PAYLOAD_URL'] = 'http://127.0.0.1:3000'
-        snapshot = evidence / ('content-build-' + stamp + '.json')
-        with snapshot.open('x') as output:
-            json.dump({'works': docs, 'posts': posts}, output)
-        build_env['CONTENT_BUILD_SNAPSHOT'] = str(snapshot)
-        print('Building updated Library; log:', log, flush=True)
-        # A failed build or worker restart must not trigger a build every minute.
-        pending = json.loads(pending_file.read_text())
-        pending['retry_after_epoch'] = time.time() + FAILURE_RETRY_SECONDS
-        write_json(pending_file, pending)
-        try:
-            with log.open('x') as output:
-                subprocess.run([
-                    '/usr/bin/npm', 'exec', '--offline', '--yes', '--package=pnpm@10.28.2',
-                    '--', 'pnpm', 'build',
-                ], cwd=REPO, env=build_env, stdout=output, stderr=subprocess.STDOUT, check=True)
-        except Exception:
-            pending['retry_after_epoch'] = time.time() + FAILURE_RETRY_SECONDS
-            write_json(pending_file, pending)
-            raise
-        finally:
-            snapshot.unlink(missing_ok=True)
-        _, _, after = read_content()
-        if after != digest:
-            write_json(pending_file, {'digest': after, 'last_change_epoch': time.time()})
-            print('Works changed during build; retaining current site and restarting quiet period')
-            return
-        cards = Cards()
-        cards.feed((REPO / 'dist/library/index.html').read_text())
-        if cards.slugs != expected_slugs(docs):
-            raise ValueError('Built Library does not match public API; retaining current site')
-        if not (REPO / 'dist/pagefind/pagefind.js').is_file():
-            raise ValueError('Search index missing; retaining current site')
-        release = BASE / 'public/releases' / stamp
-        # Public static files must be readable by the existing Nginx worker.
-        shutil.copytree(REPO / 'dist', release)
-        release.chmod(0o755)
-        for item in release.rglob('*'):
-            item.chmod(0o755 if item.is_dir() else 0o644)
-        current = BASE / 'public/current'
-        if not current.is_symlink():
-            raise ValueError('Current site is not the expected deployment symlink')
-        previous = os.readlink(current)
-        staged = BASE / 'public' / ('.current-' + stamp)
-        staged.symlink_to('releases/' + stamp)
-        os.replace(staged, current)
-        record = {
-            'digest': digest, 'published_at_utc': stamp, 'public_works': len(docs),
-            'release': str(release), 'previous': previous, 'build_log': str(log),
-        }
-        write_json(STATE, record)
-        pending_file.unlink(missing_ok=True)
-        print('Published public Works:', len(docs), 'release:', stamp)
+            return False
+        if (evidence / 'deployment-blocked').exists():
+            raise ValueError('Resolve the failed deployment before publishing content')
+        return publish(refresh=refresh)
 
 
 if __name__ == '__main__':
