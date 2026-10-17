@@ -60,6 +60,8 @@ jobs:
           npm run typecheck
       - name: Backend browser workflow
         working-directory: services/payload
+        env:
+          E2E_PRODUCTION: '1'
         run: |
           npx playwright install --with-deps chromium --only-shell
           npm run test:e2e
@@ -69,6 +71,14 @@ jobs:
           pnpm test:library:browser
           pnpm test:posts:browser
           pnpm build
+      - name: Retain backend browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-browser-failure-${{ github.run_attempt }}
+          path: services/payload/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   image:
     needs: checks
@@ -114,6 +124,6 @@ jobs:
       - name: Release summary
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          echo '### Ready for manual deployment' >> "$GITHUB_STEP_SUMMARY"
+          echo '### Verified release ready for production deployment' >> "$GITHUB_STEP_SUMMARY"
           echo "CI run ID: $GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
           cat release.json >> "$GITHUB_STEP_SUMMARY"

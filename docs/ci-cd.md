@@ -1,14 +1,15 @@
-# 自动检查与手动部署
+# 自动检查与生产部署
 
-日常流程：WSL 修改并验证 → 推送 `main` → GitHub Actions 检查、测试镜像并发布到 GHCR → 在 **Deploy production** 点击 **Run workflow**，输入成功的 CI run ID → 服务器更新。
+日常流程：WSL 修改并验证 → 推送 `main` → GitHub Actions 检查、测试镜像并发布到 GHCR → **Deploy production** 自动部署同一提交与镜像。也可点击 **Run workflow**，输入成功的 CI run ID，手动重试或回退。
 
-本次只交付仓库内源码，不配置 GitHub Secrets、不连接服务器、不执行生产迁移。首次接通后仍需完成一次真实部署验收。
+2026-10-18，按用户授权接通现有服务器：安装受限 SSH 部署入口、专用密钥及 GitHub `production` 环境，仅允许 `main`。保留已有 SSH 登录、DNS、HTTPS、Hermes、数据库和上传目录。密钥配置记录在服务器私密 `evidence/github-actions-bootstrap.json`，实际部署结果在 `evidence/deployment.json`；工作流配置完成不等于某次部署已经成功，应查询这两处和 Actions 结果。
 
 ## 两条工作流
 
 - `.github/workflows/ci.yml`：PR、`main` 推送和手动运行都会检查主题、写作室、后台、SQLite、发布器及部署逻辑，并执行后台和静态站浏览器流程。随后构建 `linux/amd64` Payload 镜像，在一次性 Docker 卷中验证迁移、账号登录、公开读取、匿名权限、上传图片及重启持久化。
 - 只有 `main` 的可信运行会推送镜像。构建后测试、推送的是同一个镜像，不在服务器重新构建。镜像位于 `ghcr.io/traceonsnow/homepage-payload`，artifact `release-<commit>-<attempt>` 中的 `release.json` 记录提交、镜像摘要、run ID 和尝试次数，保留 30 天。没有可变的 `latest` 部署入口。
 - `.github/workflows/deploy.yml`：只接受成功的本仓库 `main` CI run；拒绝 PR、失败运行、其他工作流、旧尝试的 artifact 和不匹配的镜像。生产部署串行运行，后来的请求不会取消执行中的部署。
+- `main` 的 push CI 成功会通过 `workflow_run` 自动触发；失败不部署，PR 不接触部署凭据。自动任务执行前确认发布提交仍是当前 `main`，过时版本跳过；手动任务仍允许选择可用旧版本。后台浏览器 CI 使用已构建的生产入口，避免开发编译消耗整体测试时间，失败截图和 trace 保留 7 天。
 
 真实数据库、Media、Provider 密钥和 `CONTENT_BUILD_TOKEN` 不传给 GitHub。CI 使用隔离数据；Astro 在服务器读取冻结的内容快照、构建静态文件并切换目录。写文章、添加作品仍由现有内容 timer 处理，不需要执行代码部署。
 
@@ -16,7 +17,7 @@
 
 以下步骤由服务器操作者检查并执行，不要在 WSL 或仓库的 `deploy/server/` 内直接运行生产脚本。
 
-1. 核对生产 Git 状态、当前容器、CPU 架构和持久目录。第一版镜像支持 **Linux amd64**；其他架构会在切换前被拒绝。需要 Docker Compose v2（支持 `config --format json`、`up --wait --wait-timeout`）、Git、Python 3.12、`/usr/bin/node` 24 和 `/usr/bin/npm`；安装 pnpm 的命令沿用现有发布器，固定 `10.28.2`。确认服务器能访问 GitHub、GHCR 和依赖源。
+1. 核对生产 Git 状态、当前容器、CPU 架构和持久目录。第一版镜像支持 **Linux amd64**；其他架构会在切换前被拒绝。需要支持 `config --format json`、`up --wait --wait-timeout` 的 Docker Compose、Git、Python 3.12、满足 `package.json` engines 的 `/usr/bin/node` 和 `/usr/bin/npm`；当前服务器 Node 22.22.2 已满足要求，不为接通部署升级全局 Node。安装 pnpm 的命令沿用现有发布器，固定 `10.28.2`。确认服务器能访问 GitHub、GHCR 和依赖源。
 2. 保留完整数据库、Media、配置与旧发布的备份，先完成 [Posts 首次部署交接](posts-deployment.md)。自动流程**不会迁移数据库、导入文章或切换文章来源**；没有完成已审查迁移时会拒绝上线。其他需要人工处理的迁移也采用相同边界。
 3. 从审查过的提交将 `deploy-release.py`、`ssh-deploy.py`、`publish-library.py` 三个文件逐一安装到 `/home/trace/projects/homepage-deployment/`，保留服务器已有 `compose.yaml`、`runtime.env`、数据和 `web/`。`publish-library.py` 必须是包含部署阻断检查的新版，原内容 timer 和服务环境也应按 Posts 交接更新。不要整目录同步。完成备份并确认 checkout 版本后，安装命令为：
 
@@ -33,7 +34,7 @@
    ```
 
    此入口只接收 `deploy <40位提交> <镜像摘要>`，禁用交互终端、端口及 Agent 转发。部署镜像仍具有应用对数据的正常访问权限，所以只部署自己审查过的代码。
-5. 确保服务器能拉取 GHCR 包。CI 使用自带 `GITHUB_TOKEN` 推送；首次包的可见性需在 GitHub Packages 检查。可将公开源码构建的包设为 public；若保留 private，在服务器单独配置有 `read:packages` 权限的账号登录 GHCR，不把登录凭据放进运行配置、仓库或聊天。
+5. 确保服务器能拉取 GHCR 包。CI 使用自带 `GITHUB_TOKEN` 推送，自动关联本仓库。部署 job 仅授予 `packages: read`，通过已认证 SSH 的标准输入传递该 job 的临时令牌；受限入口将 Docker 登录写入私有临时目录，部署结束删除，不修改服务器已有 Docker 登录配置。无需创建长期 PAT 或公开镜像，也不把令牌放进命令参数、运行配置、仓库或聊天。
 6. 不自动升级生产部署驱动或 Compose/systemd 配置。后续修改这些文件时，先审查并单独更新服务器安装副本；日常部署仅同步新提交的 `publish-library.py`。服务器 checkout 可以由部署器切换为 detached HEAD，不在其中开发或提交。
 
 ## GitHub 一次性配置
@@ -50,7 +51,7 @@
 
 通过服务器控制台或已有可信 SSH 连接核对主机指纹，再保存 known_hosts。非默认端口的条目使用 `[host]:port` 格式；工作流不临时信任 `ssh-keyscan` 输出。服务器安全组需允许 GitHub 托管 runner 到 SSH 的连接；不要为了尝试部署直接放宽现有访问限制。
 
-只在 CI 的镜像发布 job 授予 `packages: write`。不要把部署密钥放进 PR 检查或设置 `pull_request_target` 来执行 PR 代码。镜像推送、服务器登录和环境配置尚需首次真实验收。
+只在 CI 的镜像发布 job 授予 `packages: write`；部署 job 使用 `packages: read`。不要把部署密钥放进 PR 检查或设置 `pull_request_target` 来执行 PR 代码。专用 SSH 私钥保存在 GitHub 环境 Secret；本次生成时的服务器临时私钥已删除。首次真实验收以 Actions 和服务器部署记录为准。
 
 ## 部署和失败处理
 

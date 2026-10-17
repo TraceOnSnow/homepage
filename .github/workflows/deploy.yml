@@ -1,6 +1,10 @@
 name: Deploy production
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       run_id:
@@ -11,6 +15,7 @@ on:
 permissions:
   contents: read
   actions: read
+  packages: read
 
 concurrency:
   group: homepage-production
@@ -18,7 +23,12 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 35
@@ -31,7 +41,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          CI_RUN_ID: ${{ inputs.run_id }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          AUTOMATIC_DEPLOY: ${{ github.event_name == 'workflow_run' }}
         run: |
           [[ "$CI_RUN_ID" =~ ^[1-9][0-9]*$ ]]
           directory=$(mktemp -d)
@@ -41,8 +52,18 @@ jobs:
           artifact=$(python3 deploy/ci/verify-release.py "$directory/run.json" "$directory/workflow.json")
           gh run download "$CI_RUN_ID" --repo "$GH_REPO" --name "$artifact" --dir "$directory/artifact"
           python3 deploy/ci/verify-release.py "$directory/run.json" "$directory/workflow.json" \
-            "$directory/artifact/release.json" >> "$GITHUB_OUTPUT"
+            "$directory/artifact/release.json" > "$directory/release-output"
+          if [[ "$AUTOMATIC_DEPLOY" == 'true' ]]; then
+            current=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+            release=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["head_sha"])' "$directory/run.json")
+            if [[ "$release" != "$current" ]]; then
+              echo 'Skipping an outdated automatic release.' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          fi
+          cat "$directory/release-output" >> "$GITHUB_OUTPUT"
       - name: Deploy the verified commit and image over SSH
+        if: steps.release.outputs.commit != ''
         env:
           RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
           RELEASE_IMAGE: ${{ steps.release.outputs.image }}
@@ -51,6 +72,7 @@ jobs:
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          GHCR_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
           [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
@@ -62,11 +84,12 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$directory/key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$directory/known_hosts"
           chmod 600 "$directory/key" "$directory/known_hosts"
-          ssh -i "$directory/key" -p "$DEPLOY_PORT" \
+          printf '%s' "$GHCR_READ_TOKEN" | ssh -i "$directory/key" -p "$DEPLOY_PORT" \
             -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             -o "UserKnownHostsFile=$directory/known_hosts" -o ConnectTimeout=20 \
             "$DEPLOY_USER@$DEPLOY_HOST" "deploy $RELEASE_COMMIT $RELEASE_IMAGE"
       - name: Deployment summary
+        if: steps.release.outputs.commit != ''
         env:
           RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
           RELEASE_IMAGE: ${{ steps.release.outputs.image }}

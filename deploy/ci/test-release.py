@@ -4,6 +4,7 @@ import copy
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 
 def load(name, file):
@@ -62,6 +63,28 @@ class ReleaseTests(unittest.TestCase):
             with self.subTest(command=command):
                 with self.assertRaises(ValueError):
                     ssh.parse_command(command)
+
+    def test_registry_credential_uses_a_temporary_private_config(self):
+        args = [self.manifest['commit'], self.manifest['image']]
+        directories = []
+        def login(command, **kwargs):
+            self.assertEqual(command, ['docker', 'login', 'ghcr.io', '--username', 'TraceOnSnow', '--password-stdin'])
+            self.assertEqual(kwargs['input'], 'disposable-read-token')
+            directory = Path(kwargs['env']['DOCKER_CONFIG'])
+            self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
+            directories.append(directory)
+            return type('Login', (), {'returncode': 0})()
+        with patch.object(ssh.subprocess, 'run', side_effect=login), patch.object(ssh.subprocess, 'call', return_value=0) as execute:
+            self.assertEqual(ssh.deploy(args, 'disposable-read-token'), 0)
+            self.assertEqual(execute.call_args.kwargs['env']['DOCKER_CONFIG'], str(directories[0]))
+            self.assertNotIn('disposable-read-token', str(execute.call_args))
+        self.assertFalse(directories[0].exists())
+
+    def test_registry_authentication_failure_never_deploys(self):
+        with patch.object(ssh.subprocess, 'run', return_value=type('Login', (), {'returncode': 1})()), patch.object(ssh.subprocess, 'call') as execute:
+            with self.assertRaisesRegex(ValueError, 'authentication failed'):
+                ssh.deploy([self.manifest['commit'], self.manifest['image']], 'disposable-read-token')
+            execute.assert_not_called()
 
 
 if __name__ == '__main__':
