@@ -1,5 +1,17 @@
 # Markdown Posts 部署交接
 
+## 服务器执行记录（2026-10-18）
+
+用户确认后，腾讯云服务器已按下述步骤完成正式迁移和来源切换。后台基于 `b552596` 构建，生产镜像 `homepage-payload:b552596`；checkout `66a0580` 仅额外修复 CI 容器重启后的临时端口读取。生产配置仍在仓库外，未设置 GitHub 远程部署入口或 SSH 密钥。
+
+正式操作前暂停原发布 timer 和 Payload 写入，将 SQLite 一致快照、Media、原配置、原镜像 ID 和静态发布指向保存到 `/home/trace/projects/homepage-deployment/backups/posts-production-20261017T162446Z/`。先前副本演练保存在 `backups/posts-upgrade-20261017T062004Z/`。生产新增 Posts 表及可空关系列，dry-run 后事务导入 18 篇个人文章，没有自动关联作品。原 1 个管理员、11 条作品及 20 张原业务表的全部原字段值逐项一致，Markdown 正文逐字一致；完整性和外键检查通过，容器重启后再次通过。
+
+`CONTENT_SOURCE=payload` 和独立 `CONTENT_BUILD_TOKEN` 已写入原私密 `runtime.env`，原 `PAYLOAD_SECRET` 保留。仅同步发布器及原 service 的 EnvironmentFile 配置，沿用原 timer、180 秒静默期、锁和原子发布。正式库构建成功：156 页、Pagefind 160 页。文章在 `/admin/collections/posts` 管理；Git Markdown 仅作备份。
+
+生产匿名文章读取正常，私有构建接口匿名 401、专用令牌可读取 18 篇；匿名写文章和读取 Users 均 403。未重置原管理员，也未使用未知密码登录或修改真实文章做测试；原管理员凭据原字段一致不等同于本次人工登录验收。Works Agent 专用令牌未配置，匿名 Agent POST 为 401；没有安装 MCP 或启用文章 AI 写权限。DNS、Nginx、HTTPS、证书续期和 Hermes 未变更。
+
+静态版本 `20261017T162902Z` 已正式切换；18 个文章产物、11 张媒体库卡片齐全。HTTPS 首页、媒体库、文章、Pagefind、RSS、站点地图和 Admin 均 200；1440／390 像素真实浏览器检查通过，无页面异常、横向溢出或访客内容 API 请求。1691 个静态文件扫描未发现当前私密凭据。`/admin/collections/posts` 未登录时跳转登录页。执行结果和截图保存在上述正式备份目录。以下“尚未执行”描述保留为 WSL 交接时的历史背景，以本节为准。
+
 ## 当前边界
 
 源码已实现 Posts、单篇关联、Koharu 渲染与文章/作品统一发布。默认 `CONTENT_SOURCE=files` 保留原站；新迁移、新表和导入均须先在副本验证。WSL 实现不代表线上已切换。
