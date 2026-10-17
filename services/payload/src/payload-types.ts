@@ -182,6 +182,34 @@ export interface Work {
    */
   generateSlug?: boolean | null;
   slug: string;
+  /**
+   * Personal rating, 0–10; leave blank if unrated.
+   */
+  rating?: number | null;
+  status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
+  tags?: string[] | null;
+  /**
+   * A reaction or progress note, e.g. episode 8 or second playthrough. Empty reactions display the linked article title.
+   */
+  note?: string | null;
+  /**
+   * Choose, create or edit one article. Empty reactions display its title without copying it.
+   */
+  article?: (number | null) | Post;
+  /**
+   * End date is usually enough; start date and unknown dates may be blank. Existing repeat experiences are preserved.
+   */
+  experiences?:
+    | {
+        startedOn?: string | null;
+        endedOn?: string | null;
+        status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
+        platform?: string | null;
+        progress?: string | null;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   aliases?: string[] | null;
   cover?: (number | null) | Media;
   /**
@@ -201,63 +229,9 @@ export interface Work {
         id?: string | null;
       }[]
     | null;
-  /**
-   * Personal rating, 0–10; leave blank if unrated.
-   */
-  rating?: number | null;
-  status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
-  tags?: string[] | null;
-  /**
-   * Empty reactions use the article title; placeholder text is never saved.
-   */
-  note?: string | null;
-  /**
-   * Choose, create or edit one article. Empty reactions display its title without copying it.
-   */
-  article?: (number | null) | Post;
-  experiences?:
-    | {
-        status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
-        startedOn?: string | null;
-        endedOn?: string | null;
-        platform?: string | null;
-        progress?: string | null;
-        note?: string | null;
-        id?: string | null;
-      }[]
-    | null;
   visibility: 'public' | 'private';
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt: string;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-  sizes?: {
-    card?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -307,6 +281,35 @@ export interface Post {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt: string;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * 仅可管理作品、文章及查询资料；不允许进入后台、管理账号或上传文件。
@@ -454,6 +457,22 @@ export interface WorksSelect<T extends boolean = true> {
   title?: T;
   generateSlug?: T;
   slug?: T;
+  rating?: T;
+  status?: T;
+  tags?: T;
+  note?: T;
+  article?: T;
+  experiences?:
+    | T
+    | {
+        startedOn?: T;
+        endedOn?: T;
+        status?: T;
+        platform?: T;
+        progress?: T;
+        note?: T;
+        id?: T;
+      };
   aliases?: T;
   cover?: T;
   coverUrl?: T;
@@ -468,22 +487,6 @@ export interface WorksSelect<T extends boolean = true> {
         externalId?: T;
         url?: T;
         fetchedAt?: T;
-        id?: T;
-      };
-  rating?: T;
-  status?: T;
-  tags?: T;
-  note?: T;
-  article?: T;
-  experiences?:
-    | T
-    | {
-        status?: T;
-        startedOn?: T;
-        endedOn?: T;
-        platform?: T;
-        progress?: T;
-        note?: T;
         id?: T;
       };
   visibility?: T;

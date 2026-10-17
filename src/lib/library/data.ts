@@ -55,9 +55,9 @@ export function publicLibraryWork(input: unknown, base: string): LibraryWork | u
     year: work.releaseDate?.match(/^\d{4}/)?.[0],
     recordedAt: validDate(work.createdAt),
     experiencedAt: work.experiences
-      ?.map((experience) => validDate(experience.endedOn) ?? validDate(experience.startedOn))
+      ?.map((experience) => validExperienceDate(experience.endedOn))
       .filter((date): date is string => Boolean(date))
-      .sort()
+      .sort((a, b) => Date.parse(a) - Date.parse(b))
       .at(-1),
     coverUrl:
       safePublicURL(media?.sizes?.card?.url, base) ?? safePublicURL(media?.url, base) ?? safePublicURL(work.coverUrl, base),
@@ -72,6 +72,15 @@ function validDate(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
+}
+
+function validExperienceDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  if (/^[1-9]\d{3}(?:-\d{2}(?:-\d{2})?)?$/.test(value)) {
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) && new Date(timestamp).toISOString().startsWith(value) ? value : undefined;
+  }
+  return validDate(value);
 }
 
 export async function fetchLibraryWorks(base: string, fetcher: typeof fetch = fetch): Promise<LibraryWork[]> {

@@ -4,6 +4,7 @@ import { cover, httpURL, slug, tags, writes } from './shared'
 
 export { workTypes } from '@/lib/metadata/types'
 import { workTypes } from '@/lib/metadata/types'
+import { validateExperienceDate } from '@/lib/experience'
 const statuses = ['planned', 'in-progress', 'completed', 'on-hold', 'dropped'] as const
 const statusOptions = statuses.map(value => ({ value, label: { zh: dictionaries.zh[value], en: dictionaries.en[value] } }))
 
@@ -17,6 +18,32 @@ export const Works: CollectionConfig = {
       components: { Field: '/components/admin/MetadataSearch#MetadataSearch' },
     } },
     { name: 'title', label: {zh: '标题', en: 'Title'}, type: 'text', required: true }, slug,
+    { name: 'rating', label: {zh: '个人评分', en: 'Rating'}, type: 'number', min: 0, max: 10, admin: { step: 0.1, description: { zh: '个人评分，0–10；未评分时留空。', en: 'Personal rating, 0–10; leave blank if unrated.' } } },
+    { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'completed' }, tags,
+    { name: 'note', label: {zh: '短感受', en: 'Short reaction'}, type: 'textarea', admin: {
+      components: { Field: '/components/admin/ReactionField#ReactionField' },
+      description: { zh: '一句话感受，也可记录“第八集”“二周目通关”等。留空时显示关联文章标题，不自动改写内容。', en: 'A reaction or progress note, e.g. episode 8 or second playthrough. Empty reactions display the linked article title.' },
+    } },
+    { name: 'article', label: { zh: '关联笔记', en: 'Linked article' }, type: 'relationship', relationTo: 'posts', hasMany: false,
+      admin: { description: { zh: '可选择、新建或编辑一篇文章。短感受留空时，前台显示文章标题；不会自动改写短感受。', en: 'Choose, create or edit one article. Empty reactions display its title without copying it.' } } },
+    { name: 'experiences', label: {zh: '体验时间', en: 'Experience dates'}, type: 'array', defaultValue: [{}], admin: {
+      description: { zh: '主要填写结束时间；开始时间可空。不记得时间可以留空，重看／重读时可保留多次记录。', en: 'End date is usually enough; start date and unknown dates may be blank. Existing repeat experiences are preserved.' },
+    }, fields: [
+      { type: 'row', fields: [
+        { name: 'startedOn', label: {zh: '开始时间', en: 'Started on'}, type: 'text', validate: validateExperienceDate,
+          admin: { components: { Field: '/components/admin/ExperienceDateField#ExperienceDateField' } } },
+        { name: 'endedOn', label: {zh: '结束时间', en: 'Finished on'}, type: 'text', validate: validateExperienceDate,
+          admin: { components: { Field: '/components/admin/ExperienceDateField#ExperienceDateField' } } },
+      ] },
+      { type: 'collapsible', label: { zh: '已有补充记录', en: 'Existing experience details' }, admin: {
+        initCollapsed: true, condition: (_data, sibling) => Boolean(sibling.platform || sibling.progress || sibling.note),
+      }, fields: [
+        { name: 'status', label: {zh: '当时状态', en: 'Previous status'}, type: 'select', options: statusOptions, defaultValue: 'completed', admin: { readOnly: true } },
+        { name: 'platform', label: {zh: '平台', en: 'Platform'}, type: 'text', admin: { readOnly: true } },
+        { name: 'progress', label: {zh: '原进度', en: 'Previous progress'}, type: 'text', admin: { readOnly: true } },
+        { name: 'note', label: {zh: '原备注', en: 'Previous note'}, type: 'textarea', admin: { readOnly: true } },
+      ] },
+    ] },
     { name: 'aliases', label: {zh: '别名', en: 'Aliases'}, type: 'text', hasMany: true }, cover,
     { name: 'coverUrl', label: {zh: '外部封面', en: 'External cover'}, type: 'text', validate: httpURL, admin: { description: { zh: '外部封面；上传封面优先。', en: 'External cover; uploaded covers take priority.' } } },
     { name: 'releaseDate', label: {zh: '发行日期', en: 'Release date'}, type: 'date' },
@@ -28,19 +55,6 @@ export const Works: CollectionConfig = {
       { name: 'externalId', label: {zh: '来源 ID', en: 'Provider ID'}, type: 'text', required: true },
       { name: 'url', label: {zh: '链接', en: 'URL'}, type: 'text', validate: httpURL },
       { name: 'fetchedAt', label: {zh: '获取时间', en: 'Fetched at'}, type: 'date' },
-    ] },
-    { name: 'rating', label: {zh: '个人评分', en: 'Rating'}, type: 'number', min: 0, max: 10, admin: { step: 0.1, description: { zh: '个人评分，0–10；未评分时留空。', en: 'Personal rating, 0–10; leave blank if unrated.' } } },
-    { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'planned' }, tags,
-    { name: 'note', label: {zh: '短感受', en: 'Short reaction'}, type: 'textarea', admin: {
-      components: { Field: '/components/admin/ReactionField#ReactionField' },
-      description: { zh: '留空时显示关联文章标题；占位文字不会保存到短感受。', en: 'Empty reactions use the article title; placeholder text is never saved.' },
-    } },
-    { name: 'article', label: { zh: '关联文章', en: 'Article' }, type: 'relationship', relationTo: 'posts', hasMany: false,
-      admin: { description: { zh: '可选择、新建或编辑一篇文章。短感受留空时，前台显示文章标题；不会自动改写短感受。', en: 'Choose, create or edit one article. Empty reactions display its title without copying it.' } } },
-    { name: 'experiences', label: {zh: '体验记录', en: 'Experiences'}, type: 'array', fields: [
-      { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'completed' },
-      { name: 'startedOn', label: {zh: '开始日期', en: 'Started on'}, type: 'date' }, { name: 'endedOn', label: {zh: '结束日期', en: 'Ended on'}, type: 'date' },
-      { name: 'platform', label: {zh: '平台', en: 'Platform'}, type: 'text' }, { name: 'progress', label: {zh: '进度', en: 'Progress'}, type: 'text' }, { name: 'note', label: {zh: '感想 / 笔记', en: 'Reaction / Notes'}, type: 'textarea' },
     ] },
     { name: 'visibility', label: {zh: '可见性', en: 'Visibility'}, type: 'select', required: true, defaultValue: 'public', options: [{ value: 'public', label: { zh: '公开', en: 'Public' } }, { value: 'private', label: { zh: '私密', en: 'Private' } }], admin: { position: 'sidebar' } },
   ],

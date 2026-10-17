@@ -91,3 +91,26 @@ test('stale reviews and changes during application never issue a write', async (
   await assert.rejects(runCLI(['works', 'delete', '1', '--apply'], request), /changed/);
   assert.ok(calls.every((method) => method === 'GET'));
 });
+
+test('new personal records default completed and private, while explicit planned and unknown statuses stay intact', async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'content-work-default-'));
+  try {
+    const file = path.join(directory, 'work.json');
+    for (const status of [undefined, 'planned', null]) {
+      writeFileSync(
+        file,
+        JSON.stringify({
+          title: 'Recorded work',
+          slug: 'recorded-work',
+          type: 'movie',
+          ...(status === undefined ? {} : { status }),
+        }),
+      );
+      const preview = await runCLI(['works', 'create', file], async () => ({ totalDocs: 0 }));
+      assert.equal(preview.data.status, status === undefined ? 'completed' : status);
+      assert.equal(preview.data.visibility, 'private');
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

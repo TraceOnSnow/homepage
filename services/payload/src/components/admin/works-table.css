@@ -1,0 +1,29 @@
+.works-table { padding: 2rem max(1rem, var(--gutter-h)); }
+.works-table__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin: 1rem 0; }
+.works-table button, .works-table select, .works-table input, .works-table textarea { font: inherit; color: var(--theme-text); background: var(--theme-input-bg, var(--theme-elevation-50)); border: 1px solid var(--theme-elevation-200); border-radius: 4px; padding: .55rem; }
+.works-table button { cursor: pointer; }
+.works-table button:disabled { opacity: .5; cursor: default; }
+.works-table a { color: var(--theme-success-600, #1673b1); text-decoration: underline; }
+.works-table__muted { color: var(--theme-elevation-600); font-size: .85rem; }
+.works-table__scroll { overflow-x: auto; max-width: 100%; }
+.works-table table { border-collapse: collapse; width: 100%; min-width: 1250px; }
+.works-table caption { text-align: left; padding: .75rem 0; }
+.works-table th, .works-table td { text-align: left; vertical-align: top; padding: .8rem .6rem; border-bottom: 1px solid var(--theme-elevation-150); }
+.works-table th { white-space: nowrap; }
+.works-table td:first-child { min-width: 180px; }
+.works-table td:last-child { min-width: 150px; max-width: 240px; }
+.works-table small { display: block; margin-top: .4rem; }
+.works-table__cover { width: 32px; height: 45px; object-fit: cover; float: left; margin-right: .5rem; }
+.works-table__rating { width: 75px; }
+.works-table__date { width: 125px; }
+.works-table textarea { min-width: 175px; width: 100%; resize: vertical; }
+.works-table__article { min-width: 170px; max-width: 250px; }
+.works-table__actions { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .5rem; }
+.works-table__actions button { font-size: .8rem; padding: .3rem .45rem; }
+.works-table__error { background: var(--theme-error-50); }
+.works-table__dialog { width: min(720px, 95vw); max-height: 85vh; overflow-y: auto; color: var(--theme-text); background: var(--theme-bg); border: 1px solid var(--theme-elevation-200); border-radius: 8px; padding: 1.5rem; }
+.works-table__dialog::backdrop { background: #0008; }
+.works-table__candidates { list-style: none; padding: 0; }
+.works-table__candidates li { display: flex; gap: .8rem; align-items: center; border-bottom: 1px solid var(--theme-elevation-150); padding: .7rem 0; }
+.works-table__candidates li span { flex: 1; }
+.works-table__candidates img { width: 42px; height: 60px; object-fit: cover; }

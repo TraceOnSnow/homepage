@@ -40,7 +40,7 @@ test('one native API-key identity manages Works and Markdown Posts without admin
     assert.equal((await payload.find({ collection: 'works' })).totalDocs, 0)
     const work = await runCLI(['works', 'create', workFile, '--apply'], client)
     assert.equal(work.visibility, 'private')
-    assert.equal(work.status, null)
+    assert.equal(work.status, 'completed')
     await assert.rejects(runCLI(['works', 'create', workFile, '--apply'], client), /already exists/)
     const markdown = '\r\n## 原始 Markdown\r\n\r\n++保留语法++\r\n'
     const bodyFile = path.join(directory, 'article.md'); await writeFile(bodyFile, markdown)

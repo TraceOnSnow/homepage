@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildConfig } from 'payload'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { text } from '@payloadcms/db-sqlite/drizzle/sqlite-core'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import sharp from 'sharp'
 import { en } from '@payloadcms/translations/languages/en'
@@ -22,7 +23,10 @@ export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || '',
   serverURL: process.env.SERVER_URL || 'http://localhost:3000',
   i18n: { supportedLanguages: { en, zh }, fallbackLanguage: 'zh' },
-  admin: { user: 'users', importMap: { baseDir: dirname } },
+  admin: { user: 'users', importMap: { baseDir: dirname }, components: {
+    afterNavLinks: ['/components/admin/WorksTableNav#WorksTableNav'],
+    views: { worksTable: { Component: '/components/admin/WorksTableView#WorksTableView', path: '/works-table', exact: true } },
+  } },
   collections: [Users, Works, Media, Posts, ContentClients],
   editor: lexicalEditor(), sharp,
   db: sqliteAdapter({
@@ -30,6 +34,12 @@ export default buildConfig({
     migrationDir: path.resolve(dirname, 'migrations'),
     // Use migrations in development too, preserving archived legacy tables.
     push: false,
+    // Keep the existing physical SQL default. Payload supplies the new application
+    // default explicitly; changing SQLite's default would rebuild Works needlessly.
+    afterSchemaInit: [({ schema, extendTable }) => {
+      extendTable({ table: schema.tables.works, columns: { status: text('status').default('planned') } })
+      return schema
+    }],
     // Enable explicit atomic bulk import only; keep normal runtime behavior unchanged.
     transactionOptions: process.env.PAYLOAD_IMPORT_TRANSACTION === '1' ? {} : undefined,
   }),

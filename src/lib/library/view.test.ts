@@ -43,4 +43,7 @@ test('rating sort preserves zero and dates use the configured site timezone', ()
     ['high', 'zero', 'unrated'],
   );
   assert.equal(formatLibraryDate('2026-01-01T20:00:00Z', 'en-CA', 'Asia/Shanghai'), '2026-01-02');
+  assert.equal(formatLibraryDate('2020', 'zh', 'Asia/Shanghai'), '2020');
+  assert.equal(formatLibraryDate('2020-05', 'en', 'America/Chicago'), '2020-05');
+  assert.equal(formatLibraryDate('2020-05-18', 'en', 'America/Chicago'), '2020-05-18');
 });

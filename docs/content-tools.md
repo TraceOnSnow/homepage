@@ -46,7 +46,9 @@ node scripts/content-client.mjs works link 12 34 --apply
 node scripts/content-client.mjs posts unpublish 34 --apply
 ```
 
-所有写命令默认只预览，`--apply` 才写入。新作品要求稳定 slug，默认私密、未知状态为空；新文章要求稳定 link，默认保存草稿。文章 JSON 可设置 title、markdown、link、locale、publishedAt、description、tags、cover、categories、frontmatter；`--markdown` 从 UTF-8 文件读取正文，不转富文本。发布状态使用独立 publish/unpublish 命令。
+所有写命令默认只预览，`--apply` 才写入。新作品要求稳定 slug，默认私密、状态已完成；待体验显式设置 `status: "planned"`，未说明是否体验过时先核对或设 `null`。新文章要求稳定 link，默认保存草稿。文章 JSON 可设置 title、markdown、link、locale、publishedAt、description、tags、cover、categories、frontmatter；`--markdown` 从 UTF-8 文件读取正文，不转富文本。发布状态使用独立 publish/unpublish 命令。
+
+体验时间沿用 `experiences[].startedOn/endedOn`，支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 或空；旧 ISO 时间戳保持兼容。通常只填写结束时间。进度、通关次数或备注统一写作品 `note`；旧体验记录的状态、平台、进度、备注不自动搬入公开短感受。更新数组时保留其他行、ID 和未修改的原始日期。后台批量整理入口为 `/admin/works-table`，见 [作品表格](works-table.md)。
 
 读取文章默认包含最新草稿。修改公开文章保存为新草稿，旧正文继续公开；publish 会发送最新草稿正文和原有设置，避免仅改发布状态而漏掉最新编辑。unpublish 下架，delete 删除；删除关联文章后 Payload 的现有外键把作品关联置空，原短感受保留。
 

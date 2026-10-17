@@ -180,7 +180,7 @@ export async function runCLI(argv, request) {
     if (resource === 'works') {
       if (!data.slug || !data.title || !data.type) throw Error('New Works require title, type and a stable slug');
       data.visibility ??= 'private';
-      data.status ??= null;
+      if (!Object.hasOwn(data, 'status')) data.status = 'completed';
     } else {
       if (!data.title || !data.link) throw Error('New Posts require title and a stable permalink');
       data.locale ??= 'zh';
