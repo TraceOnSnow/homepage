@@ -42,8 +42,7 @@ try {
                'node', '--import', 'tsx', '--input-type=module', '-', input=seed)
         docker('run', '-d', '--name', name, '-v', volume + ':/app/storage',
                '-p', '127.0.0.1::3000', *env, image)
-        port = docker('inspect', '--format', '{{(index (index .NetworkSettings.Ports "3000/tcp") 0).HostPort}}', name)
-        origin = 'http://127.0.0.1:' + port
+        origin = None
 
         def request(path, data=None):
             body = None if data is None else json.dumps(data).encode()
@@ -53,6 +52,10 @@ try {
                 return response.read()
 
         def verify():
+            nonlocal origin
+            # Docker may assign a new ephemeral host port after a restart.
+            port = docker('inspect', '--format', '{{(index (index .NetworkSettings.Ports "3000/tcp") 0).HostPort}}', name)
+            origin = 'http://127.0.0.1:' + port
             deadline = time.monotonic() + 120
             while True:
                 try:
