@@ -12,6 +12,7 @@ import { Media } from './collections/Media'
 import { Works } from './collections/Works'
 import { Posts } from './collections/Posts'
 import { contentEndpoint } from './lib/content-endpoint'
+import { libraryAgentEndpoint } from './lib/library-agent'
 import { metadataEndpoints } from './lib/metadata/endpoint'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -33,5 +34,5 @@ export default buildConfig({
   }),
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   upload: { limits: { fileSize: 10_000_000 } },
-  endpoints: [...metadataEndpoints, contentEndpoint],
+  endpoints: [...metadataEndpoints, contentEndpoint, libraryAgentEndpoint],
 })

@@ -71,7 +71,8 @@
     "acceptance:open": "node acceptance/scripts/report.mjs && node acceptance/scripts/open.mjs",
     "test:library": "tsx --test src/lib/library/*.test.ts src/lib/posts/*.test.ts",
     "test:library:browser": "node tests/library/browser.mjs",
-    "test:content-tools": "node --import tsx --test tests/prepare-personal-posts.test.ts"
+    "test:content-tools": "node --import tsx --test tests/prepare-personal-posts.test.ts tests/library-agent-client.test.mjs",
+    "library:agent": "node scripts/library-agent.mjs"
   },
   "dependencies": {
     "@antv/infographic": "^0.2.4",
