@@ -246,7 +246,9 @@ export default defineConfig({
     {
       name: 'payload-markdown',
       hooks: {
-        'astro:config:setup': async () => {
+        'astro:config:setup': async ({ command }) => {
+          // Preview serves the existing static output and must work with Payload stopped.
+          if (command === 'preview') return;
           if (env.CONTENT_SOURCE === 'payload') {
             const snapshot = env.CONTENT_BUILD_SNAPSHOT
               ? JSON.parse(fs.readFileSync(env.CONTENT_BUILD_SNAPSHOT, 'utf8'))

@@ -86,7 +86,14 @@ try {
   assert.ok(!html.includes('PROTECTED BODY MUST NEVER BE PUBLISHED IN PLAINTEXT'));
   await assert.rejects(readFile('dist/post/protected-review.md'));
   await assert.rejects(readFile('dist/post/private-draft/index.html'));
-  const preview = start('pnpm', ['preview', '--host', '127.0.0.1', '--port', '4333']);
+  const preview = start('pnpm', ['preview', '--host', '127.0.0.1', '--port', '4333'], {
+    env: {
+      ...env,
+      CONTENT_SOURCE: 'payload',
+      PAYLOAD_URL: 'http://127.0.0.1:3399',
+      CONTENT_BUILD_TOKEN: 'test-build-only-credential-at-least-32-chars',
+    },
+  });
   for (let attempt = 0; attempt < 120; attempt++) {
     try {
       const response = await fetch('http://127.0.0.1:4333', { signal: AbortSignal.timeout(2000) });
@@ -134,7 +141,7 @@ try {
   await assert.rejects(readFile('dist/post/native-review/index.html'));
   assert.ok(!(await readFile('dist/library/index.html', 'utf8')).includes('data-work-slug='));
   console.log(
-    'PASS: 38-file transactional import, overwrite refusal, native Markdown, protected/draft privacy, single article links, title fallback, original reactions, desktop/mobile and no visitor API calls',
+    'PASS: transactional Markdown import, overwrite refusal, native Markdown, protected/draft privacy, single article links, title fallback, original reactions, desktop/mobile and no visitor API calls',
   );
 } finally {
   await browser?.close();

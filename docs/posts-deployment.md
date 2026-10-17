@@ -4,6 +4,8 @@
 
 源码已实现 Posts、单篇关联、Koharu 渲染与文章/作品统一发布。默认 `CONTENT_SOURCE=files` 保留原站；新迁移、新表和导入均须先在副本验证。WSL 实现不代表线上已切换。
 
+2026-10-16，WSL 本地已在备份及副本演练后导入 18 篇个人文章，并配置 `CONTENT_SOURCE=payload`。本地 36 条作品及旧表保留；原 Markdown 停止编辑，仅作备份。以下服务器任务仍未执行，不能用 Git 同步代替数据库和私密配置迁移。
+
 Posts 使用 `cms_posts` 和 `_cms_posts_v`，保留原来的富文本 `posts`、Projects、账号、评分、感想、状态和体验记录。迁移只新增表、索引、可空关联列。`down` 明确拒绝删除文章数据；回滚优先恢复应用代码，真正撤销数据操作使用完整备份。
 
 ## 给服务器的执行任务
@@ -15,7 +17,7 @@ Posts 使用 `cms_posts` 和 `_cms_posts_v`，保留原来的富文本 `posts`�
    pnpm content:plan src/content/blog /private/incoming/new-markdown-plan.json
    ```
 
-   计划可能包含受保护正文，权限为 `0600`，只通过私有通道传输。不提交 Git。MDX、相对 Markdown 图片、重复链接会停止预检；本次 38 篇现有 `.md` 已在隔离库验证。原文件只读保留，导入后不再编辑它们。
+   计划可能包含受保护正文，权限为 `0600`，只通过私有通道传输。不提交 Git。MDX、相对 Markdown 图片、重复链接会停止预检；当前已整理的 18 篇个人 `.md` 已在副本及本地真库验证。原文件只读保留，导入后不再编辑它们。
 3. 使用**副本**数据库和 Media 演练新镜像、迁移、导入及构建。先运行 `payload migrate`，再在同一新镜像中运行 `node --import tsx scripts/import-markdown.ts /private/plan.json` 做 dry-run，确认后加 `--apply`。容器需要把计划只读挂载到对应路径；沿用现有真实 `PAYLOAD_SECRET` 和持久卷，不能初始化空库替代原数据。
 4. 导入默认拒绝同语言同链接的现有文章、缺失作品、已有关系及一个作品多篇候选。事务包含全部新文章与关系；失败全部回滚，不覆盖旧文章。不要直接重复 `--apply`；有冲突先检查清单。
 5. 副本演练通过后，对已备份的正式库按相同顺序执行迁移、dry-run 和导入。设置新 `CONTENT_BUILD_TOKEN`（`openssl rand -hex 32`），在 Payload 和发布器使用同一私密值，保留原 `PAYLOAD_SECRET`。配置 `CONTENT_SOURCE=payload`。不要在聊天、Git、命令参数或构建日志中输出令牌。
@@ -37,4 +39,4 @@ Posts 使用 `cms_posts` 和 `_cms_posts_v`，保留原来的富文本 `posts`�
 
 构建失败时 `public/current` 保持不变。需要撤回已发布页面时恢复记录的旧发布链接，并暂停自动发布以免再次切换。需要应用回退时恢复旧代码和原运行配置，保留新增表及原数据；确需撤销导入则停止写入、恢复已验证的数据库和 Media 备份。旧文件模式可由 `CONTENT_SOURCE=files` 恢复，但不能同时继续编辑两份内容。
 
-尚未实现真正的 Astro 在线预览、AI/MCP 或受限 AI 角色。没有执行此交接前，不宣称服务器已具备新文章管理功能。
+尚未实现真正的 Astro 在线预览、文章 AI/MCP 或受限文章角色。媒体库已有独立的受限 Agent API 和 skill，见 [媒体库 Agent](library-agent.md)，不具备文章写权限。没有执行此交接前，不宣称服务器已具备新文章管理功能。

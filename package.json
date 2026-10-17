@@ -7,8 +7,10 @@
     "node": ">=22.20.0"
   },
   "scripts": {
+    "library:agent": "node scripts/library-agent.mjs",
     "content:plan": "tsx scripts/plan-post-import.ts",
     "test:posts:browser": "node tests/posts/browser.mjs",
+    "test:posts:preview": "node tests/posts/preview.mjs",
     "dev": "pnpm koharu migrate --check && astro dev",
     "generate:lqips": "npx tsx src/scripts/generateLqips.ts",
     "generate:similarities": "npx tsx src/scripts/generateSimilarities.ts",
@@ -33,7 +35,9 @@
     "koharu": "npx tsx scripts/koharu.tsx",
     "migrate": "pnpm koharu migrate",
     "save-slugs": "npx tsx scripts/save-slugs.ts",
-    "test": "npm run test:content-tools && npm run test:workspace && npm run test:config && npm run test:markdown && npm run test:meting && npm run test:umami && npm run test:toc && npm run test:lightbox && npm run test:glide && npm run test:drawer && npm run test:diagram && npm run test:migrate && npm run test:moments && npm run test:motion && npm run test:index && npm run test:library",
+    "test": "npm run test:dev && npm run test:content-tools && npm run test:workspace && npm run test:config && npm run test:markdown && npm run test:meting && npm run test:umami && npm run test:toc && npm run test:lightbox && npm run test:glide && npm run test:drawer && npm run test:diagram && npm run test:migrate && npm run test:moments && npm run test:motion && npm run test:index && npm run test:library",
+    "test:content-tools": "node --import tsx --test tests/prepare-personal-posts.test.ts tests/library-agent-client.test.mjs",
+    "test:dev": "node --test tests/dev-service.test.mjs",
     "test:index": "tsx --test src/lib/content/index-groups.test.ts src/lib/content/index-categories.test.ts src/lib/content/index-tags.test.ts src/lib/content/series-issue.test.ts src/lib/content/colophon.test.ts src/lib/content/colophon-view.test.ts src/lib/content/post-source.test.ts",
     "test:workspace": "node --test tests/workspace.test.mjs",
     "test:config": "tsx --test src/lib/config/content.test.ts src/lib/config/editor.test.ts src/lib/config/featured-series.test.ts src/lib/config/friends.test.ts src/lib/config/motion.test.ts src/lib/config/colophon.test.ts",
@@ -71,8 +75,9 @@
     "acceptance:open": "node acceptance/scripts/report.mjs && node acceptance/scripts/open.mjs",
     "test:library": "tsx --test src/lib/library/*.test.ts src/lib/posts/*.test.ts",
     "test:library:browser": "node tests/library/browser.mjs",
-    "test:content-tools": "node --import tsx --test tests/prepare-personal-posts.test.ts tests/library-agent-client.test.mjs",
-    "library:agent": "node scripts/library-agent.mjs"
+    "preview:prepare": "node scripts/prepare-preview.mjs",
+    "preview:refresh": "node scripts/prepare-preview.mjs --refresh",
+    "test:preview:browser": "node tests/production-preview.mjs"
   },
   "dependencies": {
     "@antv/infographic": "^0.2.4",

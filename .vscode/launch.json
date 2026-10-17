@@ -1,0 +1,124 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Homepage：网站（生产试用）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "command": "zsh -lc 'node scripts/dev-service.mjs site'",
+      "autoAttachChildProcesses": false,
+      "env": {
+        "PAYLOAD_URL": "http://127.0.0.1:3000"
+      },
+      "serverReadyAction": {
+        "pattern": "Local.*(https?://(?:localhost|127\\.0\\.0\\.1):[0-9]+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "presentation": {
+        "group": "生产试用",
+        "order": 10
+      }
+    },
+    {
+      "name": "Homepage：Payload 后台（生产试用）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/services/payload",
+      "command": "zsh -lc 'node ../../scripts/dev-service.mjs payload'",
+      "autoAttachChildProcesses": false,
+      "env": {
+        "SERVER_URL": "http://localhost:3000"
+      },
+      "serverReadyAction": {
+        "pattern": "Ready in",
+        "uriFormat": "http://localhost:3000/admin",
+        "action": "openExternally"
+      },
+      "presentation": {
+        "group": "生产试用",
+        "order": 11
+      }
+    },
+    {
+      "name": "Homepage：Markdown 写作室",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "command": "zsh -lc 'node scripts/dev-service.mjs cms'",
+      "autoAttachChildProcesses": false,
+      "serverReadyAction": {
+        "pattern": "CMS running at",
+        "uriFormat": "http://localhost:4322",
+        "action": "openExternally"
+      },
+      "presentation": {
+        "group": "单独启动",
+        "order": 12
+      }
+    },
+    {
+      "name": "Homepage：网站（开发热更新）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "command": "zsh -lc 'node scripts/dev-service.mjs site-dev'",
+      "autoAttachChildProcesses": false,
+      "preLaunchTask": "Homepage：等待 Payload",
+      "env": {
+        "PAYLOAD_URL": "http://127.0.0.1:3000"
+      },
+      "serverReadyAction": {
+        "pattern": "Local.*(https?://(?:localhost|127\\.0\\.0\\.1):[0-9]+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "presentation": {
+        "group": "开发热更新（高内存）",
+        "order": 30
+      }
+    },
+    {
+      "name": "Homepage：Payload（开发热更新）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/services/payload",
+      "command": "zsh -lc 'node ../../scripts/dev-service.mjs payload-dev'",
+      "autoAttachChildProcesses": false,
+      "env": {
+        "SERVER_URL": "http://localhost:3000"
+      },
+      "serverReadyAction": {
+        "pattern": "Ready in",
+        "uriFormat": "http://localhost:3000/admin",
+        "action": "openExternally"
+      },
+      "presentation": {
+        "group": "开发热更新（高内存）",
+        "order": 31
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Homepage：全部服务（生产试用）",
+      "configurations": ["Homepage：Payload 后台（生产试用）", "Homepage：网站（生产试用）"],
+      "preLaunchTask": "Homepage：检查生产试用产物",
+      "stopAll": true,
+      "presentation": {
+        "group": "一键启动",
+        "order": 1
+      }
+    },
+    {
+      "name": "Homepage：开发热更新（高内存）",
+      "configurations": ["Homepage：Payload（开发热更新）", "Homepage：网站（开发热更新）"],
+      "stopAll": true,
+      "presentation": {
+        "group": "开发热更新（高内存）",
+        "order": 40
+      }
+    }
+  ]
+}

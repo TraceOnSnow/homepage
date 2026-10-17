@@ -28,7 +28,9 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
 
 # Transformers.js model cache
 .cache/*

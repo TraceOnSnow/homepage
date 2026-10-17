@@ -10,12 +10,12 @@
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm dev
+pnpm preview:prepare
 ```
 
-访问 http://localhost:4321。另开终端运行 `pnpm cms`，在 http://localhost:4322 管理 Markdown 文件。公开 `/editor/` 保存浏览器草稿；从本地 CMS 打开文章才可保存到文件。提交 Git 和部署仍是后续操作。
+准备有效的后台配置与已有数据库后，执行上述准备命令一次；然后在 VS Code 的 WSL 窗口选择 **Homepage：全部服务（生产试用）**，按 **F5**。前台提供静态文件，Payload 运行生产构建，普通启动不编译或热更新。
 
-第一次试用先看 [本地使用指南](docs/local-usage.md)，分别启动网站、写作台和作品后台。
+访问 http://localhost:4321；在 http://localhost:3000/admin 管理文章和作品。保存内容后运行 `pnpm preview:refresh`，再刷新前台；修改源码后停止服务并重新执行 `pnpm preview:prepare`。开发热更新另有独立入口，不用于日常体验。当前本地文章已切换到 Payload，原生 Markdown 写作室只管理备份。配置与日志见 [本地使用指南](docs/local-usage.md)。
 
 ```sh
 pnpm check
@@ -32,7 +32,7 @@ pnpm preview
 ## 内容与目录
 
 - `config/site.yaml`：域名、作者、头像、导航和可选功能。
-- `src/content/blog/`：当前文件模式的文章；切换到 Payload 模式后作为历史备份，停止编辑。已迁入一篇个人文章，其余为主题示例。
+- `src/content/blog/`：18 篇个人文章的 Markdown 备份，不再编辑；主题示例归档于 `_examples/`，不被站点收录。当前本地唯一文章来源为 Payload Posts。
 - `src/pages/about.md`：个人介绍。
 - `cms/`：Koharu 原生本地 Markdown 管理工具。
 - `services/payload/`：已迁移的独立作品管理后台，使用自己的 npm 锁文件；[使用说明](services/payload/README.md)。
@@ -40,7 +40,9 @@ pnpm preview
 
 Payload 管理作品、媒体、管理员和 Markdown 文章。八个元数据 Provider 为作品补全事实资料，评分、状态和感想由自己填写。Library 在构建时读取公开作品；每个作品可选择一篇文章，短感受留空时显示文章标题，已有短感受不被覆盖。详见 [Library 使用](docs/library.md)。
 
-文章来源由 `CONTENT_SOURCE=files|payload` 选择，默认保留文件模式。启用 Payload 模式需要先备份、导入、验证，再配置构建只读令牌；操作顺序见 [文章迁移与部署交接](docs/posts-deployment.md)。原生写作室保留为 Markdown 工具，Payload 模式下应在 `/admin` 编辑文章。
+媒体库 Agent 可使用仓库 [skill](skills/homepage-library/SKILL.md) 和受限 API 客户端，支持作品增删查改及元数据检索；认证、预览及旧清单导入见 [Agent 使用说明](docs/library-agent.md)。
+
+文章来源由 `CONTENT_SOURCE=files|payload` 选择；当前 WSL 已导入 18 篇个人文章并启用 `payload`。新环境的示例配置仍默认文件模式，切换需要先备份、导入、验证，再配置构建只读令牌；操作顺序见 [文章迁移与部署交接](docs/posts-deployment.md)。服务器尚未切换。原生写作室保留为 Markdown 工具，Payload 模式下应在 `/admin` 编辑文章。
 
 顶栏为首页、文章、媒体库、关于、友链。首页项目卡片资料见 `src/data/projects.ts`，截图及开发文章关联说明见 [项目展示](docs/projects.md)。周刊推荐、歌单入口和背景音乐暂时隐藏，动态功能继续关闭。
 
