@@ -1,9 +1,26 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { createContentClient, runCLI } from '../scripts/content-client.mjs';
+
+test('installed skill works through a directory symlink outside the repository without dependencies or credentials', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'content-skill-install-'));
+  try {
+    const link = path.join(directory, 'homepage-content');
+    symlinkSync(fileURLToPath(new URL('../skills/homepage-content', import.meta.url)), link, 'dir');
+    const output = execFileSync(process.execPath, [path.join(link, 'scripts/content-client.mjs'), '--help'], {
+      cwd: directory,
+      encoding: 'utf8',
+    });
+    assert.match(JSON.parse(output).usage, /posts publish/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('help works without credentials; native API keys cannot be sent to arbitrary resources or redirects', async () => {
   assert.match((await runCLI(['--help'], () => assert.fail())).usage, /posts publish/);
