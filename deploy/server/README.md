@@ -61,6 +61,8 @@ systemctl --user status homepage-cert-renew.timer --no-pager
 
 ## 已知边界
 
+- BGG / Bangumi 上游故障排查、脱敏采集工具和实际证据边界见 [诊断工具说明](diagnostics/README.md) 与 [2026-10-18 排查报告](../../docs/operations/metadata-investigation-2026-10-18.md)。原始响应和运行日志仍留在仓库外的 evidence 目录；这些工具不会自动修复或更改网络。
+
 - 合法空清单可以发布，API 失败不会清空网站；长时间构建失败后从结束时开始退避。对应发布器已于 2026-10-18 同步到实际运行目录，文章和作品使用同一发布队列；见 [正式执行记录](../../docs/posts-deployment.md)。
 - 全面备份恢复、所有上传路径及公网账号真实写入流程尚未做完整验收；运行状态不能当作这些检查已完成。
 
