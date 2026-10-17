@@ -1,5 +1,9 @@
 # 项目阶段与迁移边界
 
+## 最新：作品与文章统一内容工具
+
+按用户批准，新增标准 Payload API 客户端 `pnpm content:client` 和唯一推荐 skill `homepage-content`，统一 Works、Markdown Posts、草稿发布及作品关联；旧 Works 客户端保留兼容。新增原生 API-key-only 身份 `content-clients`，仅有内容和资料查询权限，原管理员、文章与作品表不改。新增迁移只添加身份表及内部可空关系；须副本验证、正式备份迁移后部署，不能把源码完成当作生产已启用。配置及实际验收入口见 [网站内容工具](content-tools.md)。
+
 ## 最新：GitHub 远程部署接入
 
 2026-10-18，按用户要求接入 `production` 环境和受限专用 SSH 密钥，复用现有部署器；`main` push 的 CI 成功后自动部署同一不可变镜像，失败或过时自动运行不发布，手动成功 CI 入口保留。GHCR 使用该部署 job 的临时只读令牌，Docker 登录仅存在私有临时目录，不新增长期注册表凭据。CI 后台浏览器测试使用前一步生产构建，保留完整测试及失败诊断。实际端到端结果需以 Actions 与服务器 `evidence/deployment.json` 核对，见 [部署说明](ci-cd.md)。没有改 DNS、HTTPS、Hermes 或生产数据结构。
@@ -40,7 +44,7 @@ CI 重启测试修复单独提交 `66a0580`：Docker 重启可能更换临时宿
 
 媒体库参考用户的 `works-log.md`，通过真实 Next HTTP API 新增 30 条作品，为 1 条已有作品补充平台，本地共 36 条作品；原 6 条的个人数据保持不变。仅导入可明确识别的记录，不补造评分、状态或精确体验日期；模糊条目保留核对清单。真实 Bangumi 搜索返回 5 个候选，并成功读取详情；未据此宣称八个外部来源全部重新验收。
 
-新增现有 Payload 内的受限 Works Agent API、`pnpm library:agent` JSON 客户端及仓库 [homepage-library skill](../skills/homepage-library/SKILL.md)，使用独立专用令牌；本地配置已设置并忽略，不使用管理员凭据或直接编辑 SQLite。独立 Agent 已实际按 skill 创建、查询、修改并删除两条测试作品，临时记录已清理，原有作品保留。当前没有 MCP 服务或 Posts AI 角色，skill 尚未安装到自动发现目录；权限与使用方式见 [媒体库 Agent](library-agent.md)。
+新增现有 Payload 内的受限 Works Agent API、`pnpm library:agent` JSON 客户端及原 homepage-library skill（现由 [homepage-content](../skills/homepage-content/SKILL.md) 替代），使用独立专用令牌；本地配置已设置并忽略，不使用管理员凭据或直接编辑 SQLite。独立 Agent 已实际按 skill 创建、查询、修改并删除两条测试作品，临时记录已清理，原有作品保留。当前没有 MCP 服务或 Posts AI 角色，skill 尚未安装到自动发现目录；权限与使用方式见 [媒体库 Agent](library-agent.md)。
 
 本地库、Media 和原配置已备份到后台忽略的 `storage/backups/before-library-agent-20261016T081734Z/`；私有导入报告逐项记录 30 次创建及 1 次事实补全。导入后通过真实 Next API 逐字段核对：原 6 条作品仅已确认的空平台字段和更新时间改变，其余所有字段一致；完整性及外键检查通过。3 条重复音乐和待整理想法未导入，年月体验原文保留在笔记，发行年份未伪造完整日期。静态媒体库暂不能按不精确体验日期排序，需后续确认日期精度设计。
 

@@ -11,6 +11,7 @@ import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Works } from './collections/Works'
 import { Posts } from './collections/Posts'
+import { ContentClients } from './collections/ContentClients'
 import { contentEndpoint } from './lib/content-endpoint'
 import { libraryAgentEndpoint } from './lib/library-agent'
 import { metadataEndpoints } from './lib/metadata/endpoint'
@@ -22,7 +23,7 @@ export default buildConfig({
   serverURL: process.env.SERVER_URL || 'http://localhost:3000',
   i18n: { supportedLanguages: { en, zh }, fallbackLanguage: 'zh' },
   admin: { user: 'users', importMap: { baseDir: dirname } },
-  collections: [Users, Works, Media, Posts],
+  collections: [Users, Works, Media, Posts, ContentClients],
   editor: lexicalEditor(), sharp,
   db: sqliteAdapter({
     client: { url: process.env.DATABASE_URL || 'file:./storage/payload.db' },

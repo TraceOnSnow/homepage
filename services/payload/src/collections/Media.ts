@@ -1,10 +1,10 @@
 import path from 'node:path'
 import type { CollectionConfig } from 'payload'
-import { publicRead, writes } from './shared'
+import { publicRead, administratorWrites } from './shared'
 
 export const Media: CollectionConfig = {
   labels: { singular: {zh: '媒体', en: 'Media'}, plural: {zh: '媒体', en: 'Media'} },
-  slug: 'media', access: { read: publicRead, ...writes },
+  slug: 'media', access: { read: publicRead, ...administratorWrites },
   upload: {
     staticDir: process.env.MEDIA_DIR || path.resolve('storage/media'),
     mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'],

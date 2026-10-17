@@ -2,9 +2,12 @@ import type { Access, Field, PayloadRequest } from 'payload'
 import { slugField } from 'payload'
 import { slugify } from '../lib/slug'
 
-export const authenticated = ({ req }: { req: PayloadRequest }): boolean => Boolean(req.user)
+export const administrator = ({ req }: { req: PayloadRequest }): boolean => req.user?.collection === 'users'
+export const authenticated = ({ req }: { req: PayloadRequest }): boolean =>
+  administrator({ req }) || req.user?.collection === 'content-clients'
 export const publicRead: Access = () => true
 export const writes = { create: authenticated, update: authenticated, delete: authenticated }
+export const administratorWrites = { create: administrator, update: administrator, delete: administrator }
 export const slug: Field = slugField({
   slugify: ({ valueToSlugify }) => slugify(String(valueToSlugify || '')),
   overrides: (row) => {

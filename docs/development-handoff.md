@@ -6,6 +6,10 @@
 
 生产 checkout 和仓库外部署运行目录保持独立；参考 `deploy/server/README.md`。模板不能直接在仓库中运行，也不能整体覆盖真实部署目录、配置或数据。
 
+## 统一内容工具后续交接
+
+用户已批准把作品与文章放在同一个普通客户端和 skill 中，通过 Payload 标准 API 操作。当前源码提供 `pnpm content:client`、`skills/homepage-content` 及 `content-clients` 原生 API-key-only 身份；账号／上传／部署权限不授予该身份。旧 Works Agent 路径只保留兼容，不作为文章接口扩展。迁移、配置与使用见 [网站内容工具](content-tools.md)，生产是否启用以正式迁移和部署记录为准。
+
 ## 服务器最新状态（2026-10-18）
 
 经用户批准，服务器已完成 Posts 正式迁移、18 篇个人文章导入、`CONTENT_SOURCE=payload` 切换和文章／作品统一自动发布。原管理员和服务器原有 11 条作品保留，未用 WSL 的 36 条作品覆盖服务器数据。正式生产构建 156 页、Pagefind 160 页；备份、实际检查和权限边界见 [部署执行记录](posts-deployment.md)。下面“上一版本／下一版本”及“服务器仍需执行”等文字是本地交接时的历史描述。

@@ -1,6 +1,8 @@
 # 媒体库 Agent 使用
 
-仓库提供 [homepage-library skill](../skills/homepage-library/SKILL.md) 和 `pnpm library:agent` JSON 客户端。它们调用现有 Payload 内的专用接口，不运行额外 MCP 服务，也不直接编辑数据库。让 Agent 阅读该 skill 即可使用；当前 skill 放在仓库 `skills/`，尚未安装到用户的自动发现目录。
+新的统一入口为 [homepage-content skill](../skills/homepage-content/SKILL.md) 和 `pnpm content:client`，作品、文章共用 Payload 原生 API Key 及标准 REST API，详见 [网站内容工具](content-tools.md)。旧 homepage-library skill 已由统一 skill 替代。
+
+以下保留旧 `pnpm library:agent` 客户端与清单导入脚本的兼容用法。旧接口和独立 Bearer 令牌不扩展文章能力，不是新工具的认证方式；生产环境未配置旧令牌。
 
 ## 认证与运行
 
