@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -48,12 +48,21 @@ test('snapshot validates status, pagination and auth; API failure cannot replace
   await syncPosts({ ...options, posts: [] });
   await assert.rejects(readFile(path.join(options.directory, 'note/review.md')));
 });
-test('existing Markdown import preserves bodies and site-local dates across all bundled languages', async () => {
-  const plan = await readMarkdownImport('src/content/blog', 'Asia/Shanghai');
-  assert.equal(plan.length, 38);
+test('Markdown import preserves bodies and site-local dates across languages and excludes archived examples', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'posts-import-fixture-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await mkdir(path.join(directory, 'en'), { recursive: true });
+  await mkdir(path.join(directory, '_examples'), { recursive: true });
+  const body = '\n原始正文\n\n```text\n![example](relative-example.png)\n```\n';
+  const source = `---\ntitle: Markdown fixture\nlink: markdown-notes\ndate: 2026-02-20 00:00:00\n---\n${body}`;
+  await writeFile(path.join(directory, 'notes.md'), source);
+  await writeFile(path.join(directory, 'en/notes.md'), source);
+  await writeFile(path.join(directory, '_examples/hidden.md'), source);
+  const plan = await readMarkdownImport(directory, 'Asia/Shanghai');
+  assert.equal(plan.length, 2);
   const imported = plan.find((item) => item.data.link === 'markdown-notes');
   assert.ok(imported);
   assert.equal(imported.data.publishedAt, '2026-02-19T16:00:00.000Z');
-  assert.equal(imported.data.markdown, matter(await readFile(`src/content/blog/${imported.file}`, 'utf8')).content);
+  assert.equal(imported.data.markdown, body);
   assert.ok(plan.some((item) => item.data.locale === 'en'));
 });

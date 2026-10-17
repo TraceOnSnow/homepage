@@ -1,14 +1,14 @@
 ---
 title: 个人 Markdown 语法备忘录
-link: markdown-notes
-date: 2026-02-20 00:00:00
 tags:
   - dev
   - markdown
-categories:
-  - 笔记
 draft: false
-sticky: true
+description: ""
+link: markdown-notes
+date: 2026-02-20T00:00:00+08:00
+categories:
+  - 技术
 ---
 
 # 个人 Markdown 语法备忘录
