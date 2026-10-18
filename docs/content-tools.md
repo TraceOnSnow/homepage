@@ -56,6 +56,27 @@ node scripts/content-client.mjs posts unpublish 34 --apply
 
 已发布内容继续通过原发布器静默 180 秒后构建。写内容不提交 Git，也不触发代码部署；图片上传和 MCP 协议适配不在本轮范围。
 
+## 批量收录作品
+
+同一个客户端支持 `works import FILE [--apply]`，输入为 1–500 个已审阅作品对象组成的 JSON 数组，字段与单条 `works create` 相同：
+
+```json
+[
+  { "title": "示例作品", "slug": "example-work", "type": "movie", "experiences": [{ "endedOn": "2024" }] }
+]
+```
+
+```sh
+node scripts/content-client.mjs works import /private/works.json
+node scripts/content-client.mjs works import /private/works.json --apply
+```
+
+预览读取全部分页并列出 create/existing/review，实际写入逐条 POST 后 GET 核对。默认 completed/private，显式未知状态 `null` 保留；评分、体验日期与短感受只来自用户资料。slug 先按 CMS 相同规则规范化并默认固定，避免大小写或标点造成误判。来源 ID 优先，标题／别名辅助查重；同名而来源不同、来源冲突或无关 slug 占用交给人工检查，不把它们误报为确定的同一作品。清单内部重复也会跳过。已有作品不会被 PATCH、发布或删除。
+
+它不解析自然语言、不自动挑选元数据候选、不调用模型。Agent 先整理一次名单、检索并审阅身份，再由普通程序执行创建和核对，避免每条作品反复经过模型。书名明确但外部资料不可靠时可以只建基础记录；系列和作者名称仍留待确认。
+
+写入异常后刷新记录，报告对应 IDs 并继续独立条目；若无法核实已有内容则停止，不重发 POST。结果在 `summary` 和逐项 `results` 中；检查 review 项，不把命令结束视为全部成功。工具不提供跨用户操作的数据库事务或来源唯一性约束，同时有人收录相同作品时仍需复查。它不自动重试、自动合并旧记录或修改数据库结构。源清单和结果可能包含私人内容，保存到权限受限、Git 忽略的目录。
+
 ## 部署与兼容
 
 新迁移 `20261017_171808_content_clients` 仅新增身份表、索引及 Payload 内部关系表的可空关系列；不改 Users、Works 或 Posts 数据，不重新导入。自动部署仍拒绝未执行迁移，需先在生产副本验证和备份后手动迁移。down 拒绝删除身份，代码回退可保留新增表。

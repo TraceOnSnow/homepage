@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const usage = `homepage-content works|posts list|get|create|update|delete; works link; posts publish|unpublish; metadata search|details.
+const usage = `homepage-content works|posts list|get|create|update|delete; works import FILE [--apply]; works link; posts publish|unpublish; metadata search|details.
 Examples: posts create article.json [--markdown body.md] [--apply]; posts update ID patch.json [--apply];
 posts publish ID [--apply]; works link WORK_ID POST_ID [--apply].
 List filters: --query TEXT --slug SLUG --link LINK --locale zh --page N --limit N.
@@ -89,13 +89,18 @@ function identifier(value) {
   return Number(value);
 }
 
-function readData(file, resource, markdown) {
-  if (statSync(file).size > 4_100_000) throw Error('Content JSON is too large');
-  const value = JSON.parse(readFileSync(file, 'utf8'));
+function validateData(value, resource) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Expected a content JSON object');
   const fields = resource === 'works' ? workFields : postFields;
   if (Object.keys(value).some((key) => !fields.includes(key)))
     throw Error('Unsupported content field; use publish/unpublish for article status');
+  if (value.markdown?.length > 1_000_000) throw Error('Markdown exceeds the Posts field limit');
+  return value;
+}
+
+function readData(file, resource, markdown) {
+  if (statSync(file).size > 4_100_000) throw Error('Content JSON is too large');
+  const value = validateData(JSON.parse(readFileSync(file, 'utf8')), resource);
   if (markdown) {
     if (resource !== 'posts') throw Error('--markdown applies only to posts');
     if (statSync(markdown).size > 4_000_000) throw Error('Markdown file is too large');
@@ -104,6 +109,165 @@ function readData(file, resource, markdown) {
   if (Object.keys(value).length === 0) throw Error('Empty content patch');
   if (value.markdown?.length > 1_000_000) throw Error('Markdown exceeds the Posts field limit');
   return value;
+}
+
+const normalizedTitle = (value) =>
+  value
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, '');
+const titles = (work) =>
+  [work.title, ...(work.aliases || [])].filter((value) => typeof value === 'string').map(normalizedTitle);
+const identities = (work) => (work.sources || []).map((source) => JSON.stringify([source.provider, source.externalId]));
+// Match the CMS slug field before deduplication and readback; catalogue IDs may
+// contain capitals or punctuation that Payload normalizes when saving.
+const normalizedSlug = (value) =>
+  value
+    .normalize('NFKC')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+
+function batchMatch(data, documents) {
+  const keys = new Set(identities(data));
+  const sourceMatches = documents.filter((doc) => identities(doc).some((key) => keys.has(key)));
+  if (sourceMatches.length) {
+    const same = sourceMatches.length === 1 && sourceMatches[0].type === data.type;
+    return { outcome: same ? 'existing' : 'review', reason: same ? 'source' : 'conflicting-source', matches: sourceMatches };
+  }
+  const names = new Set(titles(data));
+  const slugMatches = documents.filter((doc) => doc.slug === data.slug);
+  const nameMatches = documents.filter((doc) => doc.type === data.type && titles(doc).some((title) => names.has(title)));
+  if (slugMatches.length && !nameMatches.includes(slugMatches[0]))
+    return { outcome: 'review', reason: 'slug-collision', matches: slugMatches };
+  if (nameMatches.length) {
+    const knownDifferent = keys.size && nameMatches.some((doc) => identities(doc).length);
+    return {
+      outcome: nameMatches.length === 1 && !knownDifferent ? 'existing' : 'review',
+      reason: knownDifferent ? 'same-title-different-source' : 'title',
+      matches: nameMatches,
+    };
+  }
+  return null;
+}
+
+async function listAllWorks(request) {
+  const documents = [];
+  for (let page = 1; ; page++) {
+    const result = await request('GET', 'works', { query: { limit: '100', page: String(page) } });
+    if (!Array.isArray(result.docs) || (result.hasNextPage && result.docs.length === 0))
+      throw Error('Unexpected Works page; refusing an incomplete duplicate check');
+    documents.push(...result.docs);
+    if (!result.hasNextPage) return documents;
+  }
+}
+
+async function importWorks(file, apply, request) {
+  if (statSync(file).size > 4_100_000) throw Error('Content JSON is too large');
+  const input = JSON.parse(readFileSync(file, 'utf8'));
+  if (!Array.isArray(input) || input.length === 0 || input.length > 500)
+    throw Error('Works import requires an array of 1–500 reviewed work objects');
+  // Validate the entire manifest before issuing any mutation.
+  const items = input.map((item) => {
+    const data = validateData(item, 'works');
+    for (const field of ['title', 'slug', 'type'])
+      if (typeof data[field] !== 'string' || !data[field].trim()) throw Error(`New Works require ${field}`);
+    data.slug = normalizedSlug(data.slug);
+    if (!data.slug) throw Error('New Works require a usable stable slug');
+    data.generateSlug ??= false;
+    if (!['game', 'anime', 'book', 'movie', 'tv', 'manga', 'comic', 'boardgame'].includes(data.type))
+      throw Error('Unsupported Work type');
+    if (data.aliases !== undefined && (!Array.isArray(data.aliases) || data.aliases.some((value) => typeof value !== 'string')))
+      throw Error('Work aliases must be strings');
+    if (
+      data.sources !== undefined &&
+      (!Array.isArray(data.sources) ||
+        data.sources.some(
+          (source) =>
+            !source ||
+            typeof source.provider !== 'string' ||
+            !source.provider ||
+            typeof source.externalId !== 'string' ||
+            !source.externalId,
+        ))
+    )
+      throw Error('Work sources require provider and externalId strings');
+    data.visibility ??= 'private';
+    if (!Object.hasOwn(data, 'status')) data.status = 'completed';
+    return data;
+  });
+  let documents = await listAllWorks(request);
+  const results = [];
+  for (const [index, data] of items.entries()) {
+    const match = batchMatch(data, documents);
+    if (match) {
+      results.push({
+        index,
+        title: data.title,
+        outcome: match.outcome,
+        reason: match.outcome === 'existing' && !match.matches[0].id ? 'duplicate-in-manifest' : match.reason,
+        ids: match.matches.map((doc) => doc.id).filter(Boolean),
+      });
+      continue;
+    }
+    if (!apply) {
+      results.push({ index, title: data.title, outcome: 'create', data });
+      documents.push(data);
+      continue;
+    }
+    try {
+      const result = await request('POST', 'works', { data });
+      if (!result.doc?.id) throw Error('Unexpected create response');
+      const current = await request('GET', 'works', { id: result.doc.id });
+      if (
+        current.title !== data.title ||
+        current.type !== data.type ||
+        current.slug !== data.slug ||
+        current.visibility !== data.visibility
+      )
+        throw Error('Created Work readback did not match');
+      if (['rating', 'status', 'note'].some((field) => Object.hasOwn(data, field) && current[field] !== data[field]))
+        throw Error('Created Work personal fields did not match');
+      if (!identities(data).every((key) => identities(current).includes(key)))
+        throw Error('Created Work sources did not match');
+      for (const [row, experience] of (data.experiences || []).entries())
+        for (const field of ['startedOn', 'endedOn'])
+          if (experience[field] && current.experiences?.[row]?.[field] !== experience[field])
+            throw Error('Created Work experience dates did not match');
+      documents.push(current);
+      results.push({ index, title: data.title, outcome: 'created', id: current.id });
+    } catch (error) {
+      // A timeout is not proof that POST failed. Refresh identities before the
+      // next item and report this item for review; never repeat its POST.
+      try {
+        documents = await listAllWorks(request);
+      } catch {
+        throw Error('Import stopped: cannot verify content after an uncertain write; inspect existing Works before retrying');
+      }
+      const found = batchMatch(data, documents);
+      results.push({
+        index,
+        title: data.title,
+        outcome: 'review',
+        reason: 'write-or-readback-failed',
+        status: error.status,
+        ids: found?.matches.map((doc) => doc.id).filter(Boolean) || [],
+      });
+    }
+  }
+  return {
+    dryRun: !apply,
+    resource: 'works',
+    action: 'import',
+    summary: Object.fromEntries(
+      ['create', 'created', 'existing', 'review'].map((outcome) => [
+        outcome,
+        results.filter((item) => item.outcome === outcome).length,
+      ]),
+    ),
+    results,
+  };
 }
 
 function parameters(args) {
@@ -151,6 +315,10 @@ export async function runCLI(argv, request) {
     return request('GET', `metadata/${action}`, { query: { type, q, ...(provider ? { provider, id } : {}) } });
   }
   if (!['works', 'posts'].includes(resource)) throw Error(usage);
+  if (action === 'import') {
+    if (resource !== 'works' || args.length !== 1 || options.size !== (options.has('apply') ? 1 : 0)) throw Error(usage);
+    return importWorks(args[0], options.has('apply'), request);
+  }
   if (action === 'list') {
     if (args.length) throw Error(usage);
     const query = { limit: '25', ...latestQuery(resource) };

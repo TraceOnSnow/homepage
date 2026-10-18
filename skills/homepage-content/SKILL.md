@@ -26,6 +26,8 @@ node scripts/content-client.mjs posts get 34
 
 ## 作品
 
+- 批量名单先一次性识别明确作品；系列／作者名／版本不明的条目集中留待确认，不展开臆测。已有可靠来源 ID 可直接复用；只有名称时批量调用现有 metadata search/details。核对标题、媒体类型、作者或年份，不默认采用搜索第一条，不把译本或分卷误当整部作品。资料查不到但名称明确时可只建基础记录，不编造封面、来源 ID、评分或体验日期。
+- 将审阅后的作品对象保存为私有 JSON 数组，使用 `works import FILE` 统一预览，再用 `works import FILE --apply`。一次支持 1–500 条，沿用单条创建字段和默认值；通过来源、标题／别名和 slug 查重，报告 existing/review，保留原记录。它只编排标准 API 请求，不调用其他 AI，不自动发布、修改或删除旧作品。失败时检查逐项结果；无法核实写入状态时会停止，不盲目重试。源名单、操作结果和个人数据保持私密，不提交 Git。
 - 按标题、`--slug` 或 `--provider NAME --external-id ID` 查重。不同版本、同名作品有歧义时先核对。
 - `metadata search TYPE "名称"`，再使用候选来源与 ID 调用 `metadata details TYPE "名称" PROVIDER ID`。不编造检索结果或把社区评分当个人评分。
 - 创建资料写入私有 JSON，执行 `works create FILE [--apply]`；需要 `title`、`type`、稳定 `slug`。默认是记录已体验作品，状态 `completed`；待体验明确填写 `planned`，用户未说明是否体验过时先核对或显式设 `null`。新作品仍默认私密；用户要求公开时设置 `visibility: "public"`。
