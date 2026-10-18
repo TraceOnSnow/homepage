@@ -111,6 +111,29 @@ test('BGG parses XML regardless of attribute order and obtains cover/designer fr
   assert.equal(full.candidate.releaseDate, undefined)
 })
 
+test('BGG resolves expansions returned by search without excluding their details by type', async () => {
+  const requests: URL[] = []
+  const service = createMetadataService({ BGG_API_TOKEN: 'bgg-test-token' }, async input => {
+    const url = new URL(String(input)); requests.push(url)
+    if (url.pathname.endsWith('/search')) {
+      assert.equal(url.searchParams.get('type'), 'boardgame')
+      return new Response('<items><item type="boardgame" id="134277"><name type="primary" value="Catan expansion"/></item></items>')
+    }
+    assert.equal(url.searchParams.get('id'), '134277')
+    if (url.searchParams.has('type')) return new Response('<items></items>')
+    return new Response('<items><item type="boardgameexpansion" id="134277"><name type="primary" value="Catan expansion"/><image>https://cf.geekdo-images.com/expansion.jpg</image><description>Expansion details</description></item></items>')
+  })
+  const search = await service.search('boardgame', 'Catan')
+  assert.equal(search.candidates[0].externalId, '134277')
+  const resolved = await service.resolve('boardgame', 'Catan', 'bgg', '134277')
+  assert.equal(resolved.state, 'ok')
+  assert.equal(resolved.candidate.coverUrl, 'https://cf.geekdo-images.com/expansion.jpg')
+  assert.equal(resolved.candidate.description, 'Expansion details')
+  assert.equal(requests.length, 2)
+  await assert.rejects(service.resolve('boardgame', 'Catan', 'bgg', 'unissued-id'))
+  assert.equal(requests.length, 2, 'an unissued ID must not trigger a detail request')
+})
+
 test('one failed book provider does not discard other results; WeRead upgrade stops future calls', async () => {
   let wereadCalls = 0
   const service = createMetadataService(env, async input => {

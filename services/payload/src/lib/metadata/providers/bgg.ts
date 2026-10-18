@@ -36,7 +36,8 @@ export function bggProvider(env: MetadataEnvironment, http: HTTP): ProviderAdapt
       })
     },
     async resolve(work) {
-      const item = (await request('thing', { id: work.externalId, type: 'boardgame' })).find(item => item['@_id'] === work.externalId)
+      // Search includes expansions; filtering details to base games silently removes them.
+      const item = (await request('thing', { id: work.externalId })).find(item => item['@_id'] === work.externalId)
       if (!item) throw new ProviderError(502)
       return { ...work, aliases: unique([work.title, ...(item.name || []).map(name => name['@_value'])]),
         coverUrl: safeURL(item.image || item.thumbnail), description: plainText(item.description),
