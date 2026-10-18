@@ -85,9 +85,14 @@ test('full Works table edits personal fields, preserves history, manages article
   await expect(book.getByLabel('Table public book短感受')).toHaveValue('')
   await expect(book.getByLabel('Table public book短感受')).toHaveAttribute('placeholder', 'Table inline draft')
   await page.getByRole('button', { name: '保存修改（1）', exact: true }).click()
+  // The previous save has the same success message; wait for this row to finish saving.
+  await expect(page.getByRole('button', { name: '保存修改（0）', exact: true })).toBeDisabled()
   await expect(page.getByRole('status').filter({ hasText: '保存成功 1 条' })).toBeVisible()
   const inlineID = (await read(second.id)).article
-  const inline = await (await request.get(`/api/posts/${inlineID}?draft=true`, { headers })).json()
+  expect(inlineID).toEqual(expect.any(Number))
+  const inlineResponse = await request.get(`/api/posts/${inlineID}?draft=true`, { headers })
+  expect(inlineResponse.ok()).toBe(true)
+  const inline = await inlineResponse.json()
   expect(inline._status).toBe('draft')
   expect(inline.markdown).toBe('## Raw Markdown\n\n++Keep syntax++')
 
