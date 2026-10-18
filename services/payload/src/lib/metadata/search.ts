@@ -1,4 +1,5 @@
 import { createHTTP, ProviderError, UpgradeRequired } from './http'
+import { withMetadataContext } from './diagnostics'
 import type { MetadataCandidate, MetadataEnvironment, Provider, ProviderAdapter, ProviderState, SearchResult, WorkType } from './types'
 import { igdbProvider } from './providers/igdb'
 import { rawgProvider } from './providers/rawg'
@@ -33,7 +34,7 @@ export function createMetadataService(env: MetadataEnvironment, fetcher: typeof 
     if ((cooldown.get(adapter.id) || 0) > Date.now()) throw new ProviderError(429)
     if (pending.has(key)) return pending.get(key)!
     if (pending.size >= 32) throw new ProviderError(429, 1000)
-    const request = adapter.search(query, type).then(candidates => {
+    const request = withMetadataContext(adapter.id, 'search', () => adapter.search(query, type)).then(candidates => {
       if (cache.size >= 100) cache.delete(cache.keys().next().value!)
       cache.set(key, { expires: Date.now() + 300_000, candidates })
       return candidates
@@ -67,7 +68,7 @@ export function createMetadataService(env: MetadataEnvironment, fetcher: typeof 
       if (!adapter.resolve) return { candidate, state: 'ok' as ProviderState }
       try {
         if ((cooldown.get(adapter.id) || 0) > Date.now()) throw new ProviderError(429)
-        return { candidate: await adapter.resolve(candidate), state: 'ok' as ProviderState }
+        return { candidate: await withMetadataContext(adapter.id, 'details', () => adapter.resolve!(candidate)), state: 'ok' as ProviderState }
       } catch (error) {
         recordFailure(adapter, error)
         return { candidate, state: failureState(error) }
