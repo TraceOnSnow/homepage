@@ -34,6 +34,10 @@ Use focused `feat:`, `fix:`, or `chore:` commits. PRs explain observable behavio
 
 ## Development and Deployment Boundary
 
+The agent handles local development, tests and delivery; the user handles server operations. Provide reviewed changes, validation results and actionable server instructions for the user to execute. Do not initiate server connections or request server credentials, SSH identities or connection details.
+
+Treat WSL SQLite and uploads as an independent development/test dataset; the server database and uploads hold production content. Git carries source and reviewed migration scripts. Dataset transfers are separate operations requiring an explicit request; keep runtime data and credentials private. Local tests explicitly select a loopback origin and local test credentials.
+
 Implement subsequent source changes in the user's WSL checkout, commit and push there, then deploy reviewed commits to the server. `/home/trace/projects/homepage` is now the production checkout; do not continue feature development there without explicit authorization. Server-side operational data, secrets, certificates and generated releases stay outside Git. Source templates for the existing deployment live in `deploy/server/` and are installed separately into `/home/trace/projects/homepage-deployment/`; do not run them in-place or blindly overwrite the live directory.
 
 See `docs/development-handoff.md` for agreed but unimplemented product designs. Straightforward fixes using existing behavior may proceed within task authorization; new business fields, schema migrations, services, business-rule changes or data rewrites require a concrete plan and user approval. Preserve personal notes, ratings, status and experience dates.
