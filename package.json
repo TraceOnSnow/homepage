@@ -36,7 +36,7 @@
     "migrate": "pnpm koharu migrate",
     "save-slugs": "npx tsx scripts/save-slugs.ts",
     "test": "npm run test:dev && npm run test:content-tools && npm run test:workspace && npm run test:config && npm run test:markdown && npm run test:meting && npm run test:umami && npm run test:toc && npm run test:lightbox && npm run test:glide && npm run test:drawer && npm run test:diagram && npm run test:migrate && npm run test:moments && npm run test:motion && npm run test:index && npm run test:library",
-    "test:content-tools": "node --import tsx --test tests/prepare-personal-posts.test.ts tests/library-agent-client.test.mjs tests/content-client.test.mjs",
+    "test:content-tools": "node --import tsx --test tests/prepare-personal-posts.test.ts tests/library-agent-client.test.mjs tests/content-client.test.mjs tests/content-enrichment.test.mjs",
     "test:dev": "node --test tests/dev-service.test.mjs",
     "test:index": "tsx --test src/lib/content/index-groups.test.ts src/lib/content/index-categories.test.ts src/lib/content/index-tags.test.ts src/lib/content/series-issue.test.ts src/lib/content/colophon.test.ts src/lib/content/colophon-view.test.ts src/lib/content/post-source.test.ts",
     "test:workspace": "node --test tests/workspace.test.mjs",

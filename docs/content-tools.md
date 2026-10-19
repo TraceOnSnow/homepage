@@ -77,6 +77,34 @@ node scripts/content-client.mjs works import /private/works.json --apply
 
 写入异常后刷新记录，报告对应 IDs 并继续独立条目；若无法核实已有内容则停止，不重发 POST。结果在 `summary` 和逐项 `results` 中；检查 review 项，不把命令结束视为全部成功。工具不提供跨用户操作的数据库事务或来源唯一性约束，同时有人收录相同作品时仍需复查。它不自动重试、自动合并旧记录或修改数据库结构。源清单和结果可能包含私人内容，保存到权限受限、Git 忽略的目录。
 
+## 联网查资料后补空字段
+
+Agent 可以直接用自己的联网工具寻找正版页面、作者、ISBN 和封面，不必等某个元数据 API 命中，也不需要给 Payload 接入模型。核对作品和版本，检查封面在无 Referer 下可加载，再将事实整理为 JSON：
+
+```json
+{
+  "coverUrl": "https://publisher.example/cover.jpg",
+  "creators": ["作者"],
+  "description": "简短的事实简介",
+  "sources": [{
+    "provider": "web",
+    "externalId": "https://publisher.example/book/123",
+    "url": "https://publisher.example/book/123",
+    "fetchedAt": "2026-10-20T00:00:00.000Z"
+  }]
+}
+```
+
+```sh
+node scripts/content-client.mjs works get 12
+node scripts/content-client.mjs works enrich 12 /private/facts.json --expected-updated-at TIMESTAMP
+node scripts/content-client.mjs works enrich 12 /private/facts.json --expected-updated-at TIMESTAMP --apply
+```
+
+`enrich` 只补空的 coverUrl、description、releaseDate、creators、aliases、platforms，不能修改身份、个人记录、文章关联或可见性；数组字段只在整个数组为空时填入，已有上传封面时跳过外部封面。至少一个带时间的 HTTPS 资料来源为必填；来源追加去重并保留旧行 ID。默认预览，写前复查版本并在 PATCH 后回读，重复运行没有新事实便不发 PATCH。原有值有误时仍用普通 update，有明确依据后更正。
+
+这是客户端辅助命令，联网、候选判断和图片检查由当前 Agent 完成。客户端不代替联网工具，不调用模型、不抓取任意 URL，不向资料站发送网站凭据；服务端继续只提供标准 CRUD。尚未核实的元数据留空，社区评分和作品发布日期不能替代个人评分与体验日期。外链可用性取决于源站，上传托管仍通过原后台完成。
+
 ## 部署与兼容
 
 新迁移 `20261017_171808_content_clients` 仅新增身份表、索引及 Payload 内部关系表的可空关系列；不改 Users、Works 或 Posts 数据，不重新导入。自动部署仍拒绝未执行迁移，需先在生产副本验证和备份后手动迁移。down 拒绝删除身份，代码回退可保留新增表。

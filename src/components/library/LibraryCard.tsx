@@ -21,7 +21,15 @@ export function LibraryCard({
     <>
       <div className="bangumi-poster">
         {item.coverUrl ? (
-          <img src={item.coverUrl} alt="" width={200} height={300} loading="lazy" decoding="async" />
+          <img
+            src={item.coverUrl}
+            alt=""
+            width={200}
+            height={300}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+          />
         ) : (
           <span className="flex size-full items-center justify-center text-muted-foreground text-xs">
             {t('bangumi.noImage')}

@@ -2,8 +2,9 @@ import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { workEnrichment } from './work-enrichment.mjs';
 
-const usage = `homepage-content works|posts list|get|create|update|delete; works import FILE [--apply]; works link; posts publish|unpublish; metadata search|details.
+const usage = `homepage-content works|posts list|get|create|update|delete; works import FILE [--apply]; works enrich ID FILE [--apply]; works link; posts publish|unpublish; metadata search|details.
 Examples: posts create article.json [--markdown body.md] [--apply]; posts update ID patch.json [--apply];
 posts publish ID [--apply]; works link WORK_ID POST_ID [--apply].
 List filters: --query TEXT --slug SLUG --link LINK --locale zh --page N --limit N.
@@ -338,10 +339,11 @@ export async function runCLI(argv, request) {
     for (const flag of ['page', 'limit']) if (options.has(flag)) query[flag] = String(identifier(options.get(flag)));
     return request('GET', resource, { query });
   }
-  const counts = { get: 1, create: 1, update: 2, delete: 1, publish: 1, unpublish: 1, link: 2 };
+  const counts = { get: 1, create: 1, update: 2, enrich: 2, delete: 1, publish: 1, unpublish: 1, link: 2 };
   if (!(action in counts) || args.length !== counts[action]) throw Error(usage);
   if (['publish', 'unpublish'].includes(action) && resource !== 'posts') throw Error('Publishing applies only to posts');
   if (action === 'link' && resource !== 'works') throw Error('Linking applies only to works');
+  if (action === 'enrich' && resource !== 'works') throw Error('Enrichment applies only to works');
   if (options.has('markdown') && !['create', 'update'].includes(action)) throw Error('--markdown requires create or update');
   if (action === 'create') {
     const data = readData(args[0], resource, options.get('markdown'));
@@ -372,6 +374,13 @@ export async function runCLI(argv, request) {
   const expected = options.get('expected-updated-at') || current.updatedAt;
   if (expected !== current.updatedAt) throw Error('Content changed since review; read it again');
   let data;
+  let enrichment;
+  if (action === 'enrich') {
+    enrichment = workEnrichment(current, readData(args[1], resource));
+    data = enrichment.data;
+    if (!Object.keys(data).length)
+      return { resource, action, id, unchanged: true, skipped: enrichment.skipped, dryRun: !options.has('apply') };
+  }
   if (action === 'update') data = readData(args[1], resource, options.get('markdown'));
   if (action === 'link') {
     const postID = identifier(args[1]);
@@ -386,7 +395,14 @@ export async function runCLI(argv, request) {
   // Editing a published article saves a separate draft; publication is an explicit action.
   const saveDraft = resource === 'posts' && action === 'update';
   if (saveDraft) data._status = 'draft';
-  const preview = { resource, action, id, expectedUpdatedAt: expected, ...(data ? { data } : {}) };
+  const preview = {
+    resource,
+    action,
+    id,
+    expectedUpdatedAt: expected,
+    ...(data ? { data } : {}),
+    ...(enrichment ? { skipped: enrichment.skipped } : {}),
+  };
   if (!options.get('apply')) return { dryRun: true, ...preview };
   // Non-draft bulk operations match the base document; drafts have their own timestamps.
   const baseline = resource === 'posts' && !saveDraft ? await request('GET', resource, { id }) : current;
@@ -398,6 +414,40 @@ export async function runCLI(argv, request) {
   });
   if (result.errors?.length) throw Error('Payload rejected the content change; read it again before retrying');
   if (!Array.isArray(result.docs) || result.docs.length !== 1) throw Error('Content changed or disappeared; read it again');
+  if (enrichment) {
+    const verified = await request('GET', resource, { id });
+    if (
+      data.sources?.some(
+        (source) =>
+          !verified.sources?.some(
+            (saved) => saved.provider === source.provider && saved.externalId === source.externalId && saved.url === source.url,
+          ),
+      )
+    )
+      throw Error('Enrichment source readback mismatch; inspect content before retrying');
+    for (const field of Object.keys(data).filter((field) => field !== 'sources')) {
+      if (JSON.stringify(verified[field]) !== JSON.stringify(data[field]))
+        throw Error(`Enrichment readback mismatch for ${field}; inspect content before retrying`);
+    }
+    for (const field of [
+      'rating',
+      'status',
+      'note',
+      'tags',
+      'article',
+      'experiences',
+      'visibility',
+      'title',
+      'type',
+      'slug',
+      'generateSlug',
+      'cover',
+    ]) {
+      if (JSON.stringify(verified[field]) !== JSON.stringify(current[field]))
+        throw Error(`Content changed during enrichment (${field}); inspect it before retrying`);
+    }
+    return verified;
+  }
   return result.docs[0];
 }
 
