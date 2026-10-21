@@ -61,7 +61,11 @@ export function LibraryCard({
           <time dateTime={date}>{formatLibraryDate(date, locale, timeZone)}</time>
         </p>
       )}
-      <ArticleNote note={item.note} article={mainArticle} />
+      <ArticleNote
+        note={item.note}
+        article={mainArticle}
+        expansion={{ expand: t('library.expandNote'), collapse: t('library.collapseNote') }}
+      />
     </article>
   );
 }
