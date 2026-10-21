@@ -133,3 +133,11 @@
 .dark .logo-text {
   color: #ed788c;
 }
+
+@media (width <= 992px) {
+  #site-header .logo-text {
+    font-size: clamp(1rem, 5.5vw, 1.5rem);
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+  }
+}

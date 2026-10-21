@@ -108,6 +108,15 @@ try {
     await expect(shelf.locator('[data-library-type=game]')).toHaveAttribute('aria-pressed', 'true');
     await expect(shelf.getByRole('button', { name: '2', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(cards).toHaveCount(24);
+    assert.equal(
+      await page.locator('#site-header .logo-text:visible').evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getClientRects().length;
+      }),
+      1,
+      'The site name should stay on one line',
+    );
     const slugs = await cards.evaluateAll((elements) => elements.map((element) => element.dataset.workSlug));
     await page.reload();
     await expect
