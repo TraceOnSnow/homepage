@@ -55,6 +55,9 @@ yarn-error.log*
 /test-results/
 /playwright-report/
 
+# Local acceptance page; generated alongside the private example database
+/public/acceptance-preview.html
+
 # Python import helper artifacts
 __pycache__/
 *.pyc
