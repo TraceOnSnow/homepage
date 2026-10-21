@@ -1,5 +1,8 @@
 .works-table { padding: 2rem max(1rem, var(--gutter-h)); }
 .works-table__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin: 1rem 0; }
+.works-table__savebar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; padding: .75rem; background: var(--theme-bg); border: 1px solid var(--theme-elevation-200); border-radius: 6px; }
+.works-table__savebar span { font-size: .85rem; }
+.works-table :is(button, a, input, select, textarea):focus-visible, .works-table__scroll:focus-visible { outline: 2px solid var(--theme-success-600, #1673b1); outline-offset: 3px; }
 .works-table button, .works-table select, .works-table input, .works-table textarea { font: inherit; color: var(--theme-text); background: var(--theme-input-bg, var(--theme-elevation-50)); border: 1px solid var(--theme-elevation-200); border-radius: 4px; padding: .55rem; }
 .works-table button { cursor: pointer; }
 .works-table button:disabled { opacity: .5; cursor: default; }
@@ -21,9 +24,28 @@
 .works-table__actions { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .5rem; }
 .works-table__actions button { font-size: .8rem; padding: .3rem .45rem; }
 .works-table__error { background: var(--theme-error-50); }
+.works-table__dirty { background: var(--theme-elevation-50); }
 .works-table__dialog { width: min(720px, 95vw); max-height: 85vh; overflow-y: auto; color: var(--theme-text); background: var(--theme-bg); border: 1px solid var(--theme-elevation-200); border-radius: 8px; padding: 1.5rem; }
 .works-table__dialog::backdrop { background: #0008; }
 .works-table__candidates { list-style: none; padding: 0; }
 .works-table__candidates li { display: flex; gap: .8rem; align-items: center; border-bottom: 1px solid var(--theme-elevation-150); padding: .7rem 0; }
 .works-table__candidates li span { flex: 1; }
 .works-table__candidates img { width: 42px; height: 60px; object-fit: cover; }
+
+@media (max-width: 760px) {
+  .works-table { padding: 1rem 1rem 12rem; }
+  .works-table__toolbar > :is(input, select) { width: 100%; min-height: 44px; }
+  .works-table button { min-height: 44px; }
+  .works-table__savebar { position: fixed; inset-inline: 0; top: auto; bottom: 0; border-radius: 0; padding: .65rem 1rem max(.65rem, env(safe-area-inset-bottom)); box-shadow: 0 -3px 12px #0001; }
+  .works-table__savebar span { flex-basis: 100%; }
+  .works-table__scroll { overflow: visible; }
+  .works-table table, .works-table tbody, .works-table caption { display: block; width: 100%; min-width: 0; }
+  .works-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .works-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--theme-elevation-200); border-radius: 6px; margin-bottom: 1rem; }
+  .works-table td { display: block; min-width: 0; max-width: none; padding: .65rem; }
+  .works-table td::before { content: attr(data-label); display: block; font-size: .8rem; font-weight: 600; margin-bottom: .4rem; }
+  .works-table td:is(:first-child, :last-child), .works-table td[data-label="短感受"], .works-table td[data-label="关联笔记"] { grid-column: 1 / -1; min-width: 0; max-width: none; }
+  .works-table td :is(input, select, textarea), .works-table__article { box-sizing: border-box; width: 100%; min-width: 0; max-width: none; }
+  .works-table td :is(input, select, textarea) { min-height: 44px; }
+  .works-table__actions button { padding: .5rem .65rem; }
+}

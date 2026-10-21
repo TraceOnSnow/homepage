@@ -1,5 +1,5 @@
 import type { Work } from '../../payload-types'
-import { workPublicationData, type TableWork } from '../../lib/works-table'
+import { isWorkDirty, workPatch, workPublicationData, type TableWork, type WorkValues } from '../../lib/works-table'
 
 export async function tableRequest<T>(route: string, method = 'GET', data?: unknown): Promise<T> {
   const response = await fetch(`/api/${route}`, {
@@ -61,4 +61,34 @@ export async function writeTableWork(
     throw Error('操作后的发布状态需要核对。输入已保留，请刷新本行检查结果。')
   }
   return saved
+}
+
+export type TableDraftRow = { base: TableWork; publishedBase: TableWork; values: WorkValues }
+export type TableSaveResult = { id: number; saved: Awaited<ReturnType<typeof writeTableWork>>; error?: never }
+  | { id: number; error: string; saved?: never }
+export type TableSaveProgress = { done: number; total: number; success: number; failed: number; title?: string }
+
+/** Save serially, report each observed result, and never retry an ambiguous write. */
+export async function saveTableDrafts(
+  rows: TableDraftRow[],
+  onResult: (result: TableSaveResult) => void,
+  onProgress: (progress: TableSaveProgress) => void,
+  request: typeof tableRequest = tableRequest,
+): Promise<TableSaveProgress> {
+  const targets = rows.filter(row => isWorkDirty(row.base, row.values))
+  const progress: TableSaveProgress = { done: 0, total: targets.length, success: 0, failed: 0 }
+  for (const row of targets) {
+    onProgress({ ...progress, title: row.base.title })
+    try {
+      const saved = await writeTableWork('save-draft', row.base, row.publishedBase, workPatch(row.base, row.values), request)
+      onResult({ id: row.base.id, saved })
+      progress.success++
+    } catch (error) {
+      onResult({ id: row.base.id, error: (error as Error).message })
+      progress.failed++
+    }
+    progress.done++
+    onProgress({ ...progress })
+  }
+  return progress
 }

@@ -63,6 +63,36 @@ export function isWorkDirty(work: TableWork, values: WorkValues) {
   return (Object.keys(original) as (keyof WorkValues)[]).some(key => original[key] !== values[key])
 }
 
+export type WorkTableFilters = { query: string; type: string; status: string; missing: string; attention: string }
+
+/** Include current input matches, but retain an originally matching edited row
+ * until save so typing a score/date never removes its own focused control. */
+export function matchesWorkTableFilters(work: TableWork, values: WorkValues, filters: WorkTableFilters, error?: string): boolean {
+  const query = filters.query.trim().toLocaleLowerCase()
+  const dirty = isWorkDirty(work, values)
+  const matchesPersonal = (input: WorkValues) => (!filters.status || (filters.status === 'unknown' ? !input.status : input.status === filters.status))
+    && (filters.missing !== 'rating' || !input.rating.trim())
+    && (filters.missing !== 'date' || !input.endedOn.trim())
+  return (!query || [work.title, ...(work.aliases || [])].some(text => text.toLocaleLowerCase().includes(query)))
+    && (!filters.type || work.type === filters.type)
+    && (matchesPersonal(values) || (dirty && matchesPersonal(workValues(work))))
+    && (filters.attention !== 'dirty' || dirty)
+    && (filters.attention !== 'errors' || Boolean(error))
+}
+
+/** Ordinary navigation only; drawers and modified clicks keep their native behavior. */
+export function shouldConfirmWorkNavigation(currentURL: string, destination: string, options: {
+  button: number; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean;
+  target?: string | null; download: boolean; inDrawer: boolean; inTable: boolean;
+}): boolean {
+  if (options.button !== 0 || options.ctrlKey || options.metaKey || options.shiftKey || options.altKey
+    || options.download || options.inDrawer || options.inTable || (options.target && options.target !== '_self')) return false
+  const current = new URL(currentURL)
+  const next = new URL(destination, current)
+  return ['http:', 'https:'].includes(next.protocol)
+    && (next.origin !== current.origin || next.pathname !== current.pathname || next.search !== current.search)
+}
+
 export function finishedSortValue(work: Pick<Work, 'experiences' | 'createdAt'>): number {
   const ends = (work.experiences || []).map(row => row.endedOn).filter((date): date is string => Boolean(date) && isExperienceDate(date))
   return Math.max(0, ...ends.map(date => Date.parse(date))) || Date.parse(work.createdAt) || 0
