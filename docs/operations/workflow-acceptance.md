@@ -47,3 +47,5 @@
 浏览器已核验示例登录、7→9保存草稿仍公开7、发布变9、下架消失、再次发布恢复，最终评分恢复为7。无页面错误。此过程只修改示例数据，原8766入口及真实库未写入。
 
 后台预览的当前PID记录在 `storage/acceptance-preview/server.pid`，核验当时PID的cwd、Next进程及8767监听后才发送SIGINT停止；不能复用文档中的旧PID。停止后需再次体验时，在同目录运行 `python3 storage/acceptance-preview/start.py` 前台启动，Ctrl+C停止；保持已有示例数据库和独立运行配置，不重新运行seed覆盖体验结果。当前不是开机自动恢复服务。
+
+2026-10-21 UTC用户要求现场核验时发现8766／8767均已退出，原因未确认。完成一致备份后，以原启动脚本恢复为独立后台进程：Popen显式 `start_new_session=True`、stdin接DEVNULL、输出追加原日志。启动父进程结束后的另一次检查确认8767独立SID及PPID=1，登录页和公开效果页均HTTP200；仍仅回环、不新增systemd或开机启动。示例数据库快照与恢复报告在 `chatgpt-pipeline/runtime/backups/service-recovery-20261021T210719Z/`，不要把旧PID当作当前状态。
