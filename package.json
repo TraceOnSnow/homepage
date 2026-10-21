@@ -75,6 +75,7 @@
     "acceptance:open": "node acceptance/scripts/report.mjs && node acceptance/scripts/open.mjs",
     "test:library": "tsx --test src/lib/library/*.test.ts src/lib/posts/*.test.ts",
     "test:library:browser": "node tests/library/browser.mjs",
+    "test:library:usability": "node tests/library/usability.browser.mjs",
     "preview:prepare": "node scripts/prepare-preview.mjs",
     "preview:refresh": "node scripts/prepare-preview.mjs --refresh",
     "test:preview:browser": "node tests/production-preview.mjs",

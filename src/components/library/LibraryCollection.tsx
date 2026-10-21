@@ -3,11 +3,21 @@ import { useMotionLevel } from '@hooks/useMotionLevel';
 import { useTranslation } from '@hooks/useTranslation';
 import { Icon } from '@iconify/react';
 import { type LibraryWork, WORK_TYPES, type WorkStatus, type WorkType } from '@lib/library/types';
-import { hasReflection, LIBRARY_SORTS, type LibrarySort, sortLibraryWorks } from '@lib/library/view';
+import {
+  DEFAULT_LIBRARY_VIEW,
+  hasReflection,
+  LIBRARY_SORTS,
+  type LibrarySort,
+  type LibraryViewState,
+  matchesLibraryQuery,
+  readLibraryView,
+  sortLibraryWorks,
+  writeLibraryView,
+} from '@lib/library/view';
 import { getScrollBehavior } from '@lib/motion-level';
 import { cn } from '@lib/utils';
-import { AnimatePresence, m } from 'motion/react';
-import { useMemo, useRef, useState } from 'react';
+import { m } from 'motion/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TranslationKey } from '@/i18n/types';
 import { ITEMS_PER_PAGE } from '@/lib/bangumi/constants';
 import { LibraryCard } from './LibraryCard';
@@ -39,11 +49,28 @@ interface LibraryCollectionProps {
 
 export function LibraryCollection({ works, locale, timeZone }: LibraryCollectionProps) {
   const { t } = useTranslation(locale);
-  const [activeTab, setActiveTab] = useState<WorkType | 'all'>('all');
-  const [activeFilter, setActiveFilter] = useState<WorkStatus | 'all'>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [reflectionsOnly, setReflectionsOnly] = useState(false);
-  const [sort, setSort] = useState<LibrarySort>('experienced');
+  const [view, setView] = useState<LibraryViewState>(DEFAULT_LIBRARY_VIEW);
+  const [ready, setReady] = useState(false);
+  const { type: activeTab, status: activeFilter, reflections: reflectionsOnly, sort, q: query } = view;
+  // Start with the same markup as SSR, then restore shareable filters after hydration.
+  useEffect(() => {
+    const restore = () => setView(readLibraryView(new URLSearchParams(window.location.search)));
+    restore();
+    setReady(true);
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
+  }, []);
+
+  function updateView(changes: Partial<LibraryViewState>) {
+    const next = { ...view, ...changes };
+    setView(next);
+    const url = new URL(window.location.href);
+    url.search = writeLibraryView(url.searchParams, next).toString();
+    if (url.href !== window.location.href) {
+      // Filtering changes the current shelf; Back should return to the preceding page.
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }
   const shouldReduceMotion = useMotionLevel() === 'reduced';
 
   const tabs = useMemo(
@@ -74,21 +101,35 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
     () =>
       sortLibraryWorks(
         tabItems.filter(
-          (item) => (activeFilter === 'all' || item.status === activeFilter) && (!reflectionsOnly || hasReflection(item)),
+          (item) =>
+            (activeFilter === 'all' || item.status === activeFilter) &&
+            (!reflectionsOnly || hasReflection(item)) &&
+            matchesLibraryQuery(item, query),
         ),
         sort,
       ),
-    [tabItems, activeFilter, reflectionsOnly, sort],
+    [tabItems, activeFilter, reflectionsOnly, sort, query],
   );
 
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const currentPage = Math.min(view.page, Math.max(1, totalPages));
   const pageItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   const visiblePages = getVisiblePages(totalPages, currentPage);
+  useEffect(() => {
+    if (ready && currentPage !== view.page) {
+      const next = { ...view, page: currentPage };
+      setView(next);
+      const url = new URL(window.location.href);
+      url.search = writeLibraryView(url.searchParams, next).toString();
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }, [ready, currentPage, view]);
+  const hasFilters = activeTab !== 'all' || activeFilter !== 'all' || reflectionsOnly || Boolean(query);
 
   const shelfRef = useRef<HTMLDivElement>(null);
   /** Switching pages from the bottom pager brings the shelf's top back into view instead of leaving the reader mid-page. */
   function goToPage(page: number) {
-    setCurrentPage(page);
+    updateView({ page });
     const shelf = shelfRef.current;
     if (shelf && shelf.getBoundingClientRect().top < 0) {
       shelf.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
@@ -96,28 +137,58 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
   }
 
   function handleTabChange(key: WorkType | 'all') {
-    setActiveTab(key);
-    setActiveFilter('all');
-    setCurrentPage(1);
+    updateView({ type: key, status: 'all', page: 1 });
   }
 
   function handleFilterChange(key: WorkStatus | 'all') {
-    setActiveFilter(key);
-    setCurrentPage(1);
+    updateView({ status: key, page: 1 });
   }
 
   return (
     <LazyMotionProvider>
       <div ref={shelfRef} className="bangumi-shelf space-y-5" data-library-shelf>
         <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative flex min-w-0 flex-1 items-center">
+              <span className="sr-only">{t('library.search')}</span>
+              <Icon icon="ri:search-line" className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
+              <input
+                type="search"
+                data-library-search
+                value={query}
+                onChange={(event) => updateView({ q: event.target.value, page: 1 })}
+                placeholder={t('library.searchPlaceholder')}
+                className="min-h-11 w-full rounded-lg border border-border bg-background py-2 pr-11 pl-9 text-sm outline-offset-2"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => updateView({ q: '', page: 1 })}
+                  aria-label={t('library.clearSearch')}
+                  className="absolute right-0 flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+                >
+                  <Icon icon="ri:close-line" className="size-4" />
+                </button>
+              )}
+            </label>
+            {hasFilters && (
+              <button
+                type="button"
+                data-library-reset
+                onClick={() => updateView(DEFAULT_LIBRARY_VIEW)}
+                className="min-h-11 rounded-lg px-3 text-muted-foreground text-xs hover:bg-muted hover:text-foreground"
+              >
+                {t('library.resetFilters')}
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               data-library-reflections
               aria-pressed={reflectionsOnly}
               onClick={() => {
-                setReflectionsOnly(!reflectionsOnly);
-                setCurrentPage(1);
+                updateView({ reflections: !reflectionsOnly, page: 1 });
               }}
               className={cn(
                 'rounded-full border px-3 py-1 text-xs transition-colors',
@@ -134,8 +205,7 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
                 data-library-sort
                 value={sort}
                 onChange={(event) => {
-                  setSort(event.target.value as LibrarySort);
-                  setCurrentPage(1);
+                  updateView({ sort: event.target.value as LibrarySort, page: 1 });
                 }}
                 className="max-w-full rounded-md border border-border bg-background px-2 py-1.5 text-foreground text-xs"
               >
@@ -178,31 +248,40 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
                 ),
             )}
           </div>
+          <output data-library-results className="block pt-2 text-muted-foreground text-xs">
+            {t('library.resultCount', { count: filteredItems.length })}
+          </output>
         </div>
 
-        <AnimatePresence initial={false} mode="popLayout">
-          <m.div
-            key={`${activeTab}-${activeFilter}-${reflectionsOnly}-${sort}-${currentPage}`}
-            className="bangumi-grid"
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
-          >
-            {pageItems.map((item) => (
-              <LibraryCard key={item.id} item={item} locale={locale} timeZone={timeZone} showStatus={activeFilter === 'all'} />
-            ))}
-          </m.div>
-        </AnimatePresence>
+        <m.div
+          key={`${activeTab}-${activeFilter}-${reflectionsOnly}-${sort}-${query}-${currentPage}`}
+          className="bangumi-grid"
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+        >
+          {pageItems.map((item) => (
+            <LibraryCard key={item.id} item={item} locale={locale} timeZone={timeZone} showStatus={activeFilter === 'all'} />
+          ))}
+        </m.div>
 
         {filteredItems.length === 0 && (
-          <div className="flex min-h-[200px] items-center justify-center">
-            <p className="text-muted-foreground">{t('library.empty')}</p>
+          <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center">
+            <p className="text-muted-foreground">{t(works.length ? 'library.noMatches' : 'library.empty')}</p>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={() => updateView(DEFAULT_LIBRARY_VIEW)}
+                className="min-h-11 rounded-lg border border-border px-4 text-sm hover:bg-muted"
+              >
+                {t('library.resetFilters')}
+              </button>
+            )}
           </div>
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
             <button
               type="button"
               onClick={() => goToPage(Math.max(1, currentPage - 1))}
@@ -212,7 +291,7 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
             >
               <Icon icon="ri:arrow-left-s-line" className="size-4" />
             </button>
-            <div className="flex gap-1">
+            <div className="flex max-w-full flex-wrap justify-center gap-1">
               {visiblePages.map((page, index) => {
                 const previousPage = visiblePages[index - 1];
                 const showEllipsis = previousPage !== undefined && page - previousPage > 1;

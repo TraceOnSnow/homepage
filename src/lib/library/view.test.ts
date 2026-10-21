@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { LibraryWork } from './types';
-import { displayDate, formatLibraryDate, hasReflection, sortLibraryWorks } from './view';
+import {
+  DEFAULT_LIBRARY_VIEW,
+  displayDate,
+  formatLibraryDate,
+  hasReflection,
+  matchesLibraryQuery,
+  readLibraryView,
+  sortLibraryWorks,
+  writeLibraryView,
+} from './view';
 
 const work = (slug: string, fields: Partial<LibraryWork> = {}): LibraryWork => ({
   id: slug,
@@ -46,4 +55,36 @@ test('rating sort preserves zero and dates use the configured site timezone', ()
   assert.equal(formatLibraryDate('2020', 'zh', 'Asia/Shanghai'), '2020');
   assert.equal(formatLibraryDate('2020-05', 'en', 'America/Chicago'), '2020-05');
   assert.equal(formatLibraryDate('2020-05-18', 'en', 'America/Chicago'), '2020-05-18');
+});
+
+test('search finds public titles, reactions and linked article titles with normalized terms', () => {
+  const item = work('sample', {
+    title: 'ＡＢＣ 游戏',
+    note: '第二次体验，很喜欢配乐',
+    articles: [{ title: 'Revisiting the ending', url: '/post/ending' }],
+  });
+  assert.equal(matchesLibraryQuery(item, ' abc   配乐 '), true);
+  assert.equal(matchesLibraryQuery(item, 'REVISITING'), true);
+  assert.equal(matchesLibraryQuery(item, '配乐 missing'), false);
+  assert.equal(matchesLibraryQuery(work('empty'), '   '), true);
+});
+
+test('shareable view state validates filters and preserves unrelated query parameters', () => {
+  assert.deepEqual(readLibraryView(new URLSearchParams('type=unknown&status=other&sort=wrong&page=-2')), DEFAULT_LIBRARY_VIEW);
+  for (const invalid of ['NaN', 'Infinity', '2.4', '9007199254740992']) {
+    assert.equal(readLibraryView(new URLSearchParams({ page: invalid })).page, 1);
+  }
+  const view = {
+    ...DEFAULT_LIBRARY_VIEW,
+    type: 'book' as const,
+    status: 'completed' as const,
+    sort: 'rating' as const,
+    reflections: true,
+    q: '感想 & Books',
+    page: 2,
+  };
+  const params = writeLibraryView(new URLSearchParams('utm_source=friend'), view);
+  assert.deepEqual(readLibraryView(params), view);
+  assert.equal(params.get('utm_source'), 'friend');
+  assert.equal(writeLibraryView(params, DEFAULT_LIBRARY_VIEW).toString(), 'utm_source=friend');
 });

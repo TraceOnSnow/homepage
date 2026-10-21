@@ -130,3 +130,19 @@
 .bangumi-shelf {
   scroll-margin-top: 5rem;
 }
+/* A full reaction needs reading width, rather than the narrow poster column. */
+.bangumi-grid > article:has(> [data-note-expand][aria-expanded="true"]) {
+  grid-column: 1 / -1;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+}
+.bangumi-grid > article:has(> [data-note-expand][aria-expanded="true"]) > .bangumi-card {
+  max-width: 140px;
+}
+.bangumi-grid > article:has(> [data-note-expand][aria-expanded="true"]) > [data-article-note] {
+  max-width: 70ch;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
