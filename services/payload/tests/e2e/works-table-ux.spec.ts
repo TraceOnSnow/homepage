@@ -23,7 +23,17 @@ test('Works table protects hidden edits, reports partial saves, supports keyboar
   for (let index = 0; index < 49; index++) await create(`UX pagination ${index}`)
   const invalid = await create('UX needs correction')
   const target = await create('UX keyboard work')
+  let failedRead = false
+  await page.route('**/api/works?**', async route => {
+    if (!failedRead && route.request().method() === 'GET' && new URL(route.request().url()).searchParams.get('draft') === 'true') {
+      failedRead = true
+      await route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"temporary fixture failure"}' })
+    } else await route.continue()
+  })
   await page.goto('/admin/works-table')
+  await expect(page.getByRole('button', { name: '重新读取列表', exact: true })).toBeVisible()
+  await expect(page.getByText('还没有作品，点击“记录作品”开始。', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '重新读取列表', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: '已读取' })).toBeVisible()
   const row = page.locator(`tr[data-work-id="${target.id}"]`)
   await page.getByLabel('筛选待补充信息').selectOption('rating')
@@ -37,11 +47,16 @@ test('Works table protects hidden edits, reports partial saves, supports keyboar
   await expect(row.getByLabel('UX keyboard work评分')).toHaveValue('6')
 
   let warned = false
+  const postsLink = page.locator('a[href="/admin/collections/posts"]').first()
+  const openMenu = page.getByRole('button', { name: /Open Menu|打开.*菜单/ }).first()
+  if (await openMenu.isVisible()) await openMenu.click()
   page.once('dialog', async dialog => { warned = true; await dialog.dismiss() })
-  await page.locator('a[href="/admin/collections/posts"]').first().click()
+  await postsLink.click()
   expect(warned).toBe(true)
   await expect(page).toHaveURL(/\/admin\/works-table$/)
   await expect(row.getByLabel('UX keyboard work评分')).toHaveValue('6')
+  const closeMenu = page.getByRole('button', { name: /Close Menu|关闭.*菜单/ }).first()
+  if (await closeMenu.isVisible()) await closeMenu.click()
   // This dirty row waits for an explicit save; another clean drawer remains usable.
   await expect(row.getByRole('link', { name: 'UX keyboard work', exact: true })).toBeDisabled()
   await expect(row.getByText('请先保存本行草稿，再打开详情', { exact: true })).toBeVisible()
@@ -93,7 +108,8 @@ test('Works table protects hidden edits, reports partial saves, supports keyboar
   await page.getByRole('button', { name: '清除筛选', exact: true }).click()
   await page.setViewportSize({ width: 1280, height: 900 })
   await row.getByLabel('UX keyboard work评分').fill('9.5')
+  if (await openMenu.isVisible()) await openMenu.click()
   page.once('dialog', dialog => dialog.accept())
-  await page.locator('a[href="/admin/collections/posts"]').first().click()
+  await postsLink.click()
   await expect(page).toHaveURL(/\/admin\/collections\/posts$/)
 })

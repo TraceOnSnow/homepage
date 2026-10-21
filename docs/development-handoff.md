@@ -1,5 +1,11 @@
 # Homepage 开发与部署交接
 
+## 最新收尾：日常编辑与阅读体验（2026-10-21）
+
+用户把Obsidian订阅／登录延后，先授权自主优化体验。同一开发分支已补作品表格的未保存／失败定位、保存进度与逐行重试、导航提醒、手机卡片和快捷保存；修复DefaultTemplate缺少权限／locale／用户上下文而不显示原生侧栏入口，以及列表读取失败误导为空库。公开媒体库增加本地搜索、网址条件恢复、长感想整行展开与手机站名修正，不增加字段／迁移或访客API。
+
+原生后台、作品表格及新UX浏览器场景均已在最终Next构建验证，定向unit／SQLite integration、类型及lint通过。公开前台以真实Astro生产构建和56条合成公开作品验证1365／390／320px、返回与刷新、无匹配恢复、键盘阅读、中英文、SSR及零访客API，0页面错误。8767示例数据库一致备份后刷新，30逻辑表哈希保持，3作品／2文章及用户体验输入保留。没有重新seed、切换正式checkout、迁移正式库或更换publisher。源码与证据见[阶段记录](project-status.md)，原端口体验见[验收说明](operations/workflow-acceptance.md)。
+
 ## 当前交付：同一仓库的 Markdown library / Works 草稿支持（2026-10-21）
 
 用户本轮明确允许在服务器继续开发。`/home/trace/projects/homepage-workflow-dev` 是**现有 Homepage 同一个 Git 仓库**的 `codex/markdown-publishing` worktree，与 `/home/trace/projects/homepage` 共用 Git 元数据；不是另建网站项目或另一套生产数据库。独立工作目录用于保留生产 checkout 中用户已有的 docs／skill 改动，避免运行中的内容 timer 读到尚未迁移的混合源码。下面 WSL 优先、旧字段和“下一版本”等记录保留为历史；本节及用户最新授权优先。

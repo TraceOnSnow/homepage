@@ -48,4 +48,6 @@ Payload 管理员登录后打开 `/admin/works-table`，或点击后台导航的
 
 复测命令在 `services/payload` 执行：`node --import tsx --test tests/works-table.test.ts tests/integration/works-table.test.ts`；先构建独立测试环境，再执行 `E2E_PRODUCTION=1 npx playwright test tests/e2e/workflow.spec.ts tests/e2e/works-table.spec.ts`。生产模式避免开发编译器在低内存环境长时间阻塞；截图保存在 Git 忽略的 `.cache/workflow-evidence/works-table-preview.png`。
 
-本轮易用性改动的定向 unit／SQLite integration 共10项通过，覆盖当前输入筛选、导航排除项、批量部分失败及原有发布／历史保持。新增 `tests/e2e/works-table-ux.spec.ts` 覆盖隐藏修改找回、导航取消、快捷保存、逐行纠错和390px卡片布局；需由统一构建后的隔离浏览器验收确认，不能用当前尚未重建的示例后台推断已更新。统一复测时在原两条命令末尾加入该文件，不覆盖8767现有示例数据。
+本轮易用性改动的定向 unit／SQLite integration 共10项通过，覆盖当前输入筛选、导航排除项、批量部分失败及原有发布／历史保持。新增 `tests/e2e/works-table-ux.spec.ts` 已在最终生产构建的隔离浏览器通过：首次503原位重读、隐藏修改找回、导航取消及允许、详情防丢、快捷保存、逐行纠错和390px卡片布局。原两条浏览器流程在同一最终构建亦通过。统一复测时在原两条命令末尾加入该文件；实际8767另以只读方式验收，不覆盖现有示例数据。
+
+自定义作品表格使用 `initPageResult` 的permissions、locale与当前用户传给DefaultTemplate，保留原生作品／文章等侧栏入口；不另造导航或扩大读取权限。手机或侧栏收起时，先通过原生菜单按钮展开导航。

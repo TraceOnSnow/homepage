@@ -19,6 +19,7 @@ export function WorksTable() {
   const [rows, setRows] = useState<Row[]>([])
   const [articles, setArticles] = useState<Record<number, ArticleSummary>>({})
   const [busy, setBusy] = useState(true)
+  const [loadError, setLoadError] = useState<string>()
   const [message, setMessage] = useState('正在读取全部作品…')
   const [query, setQuery] = useState('')
   const [type, setType] = useState('')
@@ -35,6 +36,7 @@ export function WorksTable() {
 
   async function load() {
     setBusy(true)
+    setLoadError(undefined)
     try {
       const [works, published, posts] = await Promise.all([
         tableDocuments<TableWork>('works?draft=true'),
@@ -45,7 +47,7 @@ export function WorksTable() {
       const originals = new Map(published.map(work => [work.id, work]))
       setRows(works.map(work => rowFor(work, originals.get(work.id)))); setArticles(Object.fromEntries(posts.map(post => [post.id, post])))
       setMessage(`已读取 ${works.length} 条作品的最新草稿与发布状态。`)
-    } catch (error) { setMessage((error as Error).message) }
+    } catch (error) { setLoadError((error as Error).message); setMessage('列表读取未完成，已有内容保持。请重试。') }
     finally { setBusy(false) }
   }
   useEffect(() => { void load() }, [])
@@ -152,9 +154,10 @@ export function WorksTable() {
       <button type="button" disabled={busy || Boolean(dirtyCount)} onClick={() => void load()}>刷新列表</button>
       {hiddenDirty > 0 && <button type="button" onClick={() => clearFilters('dirty')}>查看未保存（{hiddenDirty} 条不在本页）</button>}
       {errorCount > 0 && <button type="button" onClick={() => clearFilters('errors')}>查看失败（{errorCount}）</button>}
-      <span aria-live="polite">{progress ? `正在保存 ${progress.done} / ${progress.total} 条${progress.title ? `：${progress.title}` : ''}` : busy ? '正在核对作品状态…' : dirtyCount ? '包括其他页的修改；保存不会发布。' : '当前输入已保存'}</span>
+      <span aria-live="polite">{progress ? `正在保存 ${progress.done} / ${progress.total} 条${progress.title ? `：${progress.title}` : ''}` : busy ? '正在核对作品状态…' : dirtyCount ? '包括其他页的修改；保存不会发布。' : loadError ? '列表读取尚未完成' : '当前输入已保存'}</span>
     </div>
     <p role="status" aria-live="polite">{message}</p>
+    {loadError && <p role="alert">{loadError} <button type="button" disabled={busy || Boolean(dirtyCount)} onClick={() => void load()}>重新读取列表</button></p>}
     <p className="works-table__muted">保存草稿保留网站旧版本。每行主动发布后，按所选可见性更新；下架保留草稿和历史。关联文章有独立发布状态，保存作品不会发布文章。短感受留空时使用文章标题。</p>
     <div className="works-table__scroll" role="region" aria-label="作品编辑表格" aria-busy={busy} tabIndex={0}>
       <table><caption>全部作品及个人记录，共 {rows.length} 条；当前筛选 {visible.length} 条</caption>
@@ -166,7 +169,7 @@ export function WorksTable() {
           onSave={() => void save([row.base.id])}
           onReset={() => { if (window.confirm('放弃本行未保存的输入，重新读取最新记录？')) void readTableWork(row.base.id).then(({ latest, publishedBase }) => setRows(current => current.map(item => item.base.id === latest.id ? rowFor(latest, publishedBase) : item))).catch(error => setMessage(error.message)) }} />)}</tbody>
       </table>
-      {!visible.length && !busy && <p>{hasFilters ? '没有符合筛选条件的作品，可清除筛选或查看未保存修改。' : '还没有作品，点击“记录作品”开始。'}</p>}
+      {!visible.length && !busy && !loadError && <p>{hasFilters ? '没有符合筛选条件的作品，可清除筛选或查看未保存修改。' : '还没有作品，点击“记录作品”开始。'}</p>}
     </div>
     <div className="works-table__toolbar">
       <button type="button" disabled={busy || currentPage <= 1} onClick={() => setPage(currentPage - 1)}>上一页</button>
