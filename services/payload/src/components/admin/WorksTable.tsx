@@ -4,16 +4,16 @@ import { useEffect, useState } from 'react'
 import { useDocumentDrawer } from '@payloadcms/ui'
 import { workTypes } from '@/lib/metadata/types'
 import { dictionaries } from '@/lib/ui/dictionary'
-import { finishedSortValue, isWorkDirty, workPatch, workValues, type TableWork, type WorkValues } from '@/lib/works-table'
+import { finishedSortValue, isWorkDirty, workPatch, workPublicationLabel, workValues, type TableWork, type WorkValues } from '@/lib/works-table'
 import { ArticleCell, type ArticleSummary } from './ArticleCell'
 import { AddWorkDialog } from './AddWorkDialog'
-import { tableDocuments, tableRequest } from './works-table-api'
+import { readTableWork, tableDocuments, tableRequest, writeTableWork } from './works-table-api'
 import './works-table.css'
 
-type Row = { base: TableWork; values: WorkValues; error?: string; saved?: boolean }
+type Row = { base: TableWork; publishedBase: TableWork; values: WorkValues; error?: string; saved?: string }
 const statuses = ['planned', 'in-progress', 'completed', 'on-hold', 'dropped'] as const
 const pageSize = 50
-const rowFor = (base: TableWork): Row => ({ base, values: workValues(base) })
+const rowFor = (base: TableWork, publishedBase = base): Row => ({ base, publishedBase, values: workValues(base) })
 
 export function WorksTable() {
   const [rows, setRows] = useState<Row[]>([])
@@ -31,13 +31,15 @@ export function WorksTable() {
   async function load() {
     setBusy(true)
     try {
-      const [works, posts] = await Promise.all([
-        tableDocuments<TableWork>('works'),
+      const [works, published, posts] = await Promise.all([
+        tableDocuments<TableWork>('works?draft=true'),
+        tableDocuments<TableWork>('works?draft=false'),
         tableDocuments<ArticleSummary>('posts?draft=true&select[title]=true&select[link]=true&select[locale]=true&select[_status]=true'),
       ])
       works.sort((a, b) => finishedSortValue(b) - finishedSortValue(a) || b.id - a.id)
-      setRows(works.map(rowFor)); setArticles(Object.fromEntries(posts.map(post => [post.id, post])))
-      setMessage(`已读取 ${works.length} 条作品，包含公开和私密记录。`)
+      const originals = new Map(published.map(work => [work.id, work]))
+      setRows(works.map(work => rowFor(work, originals.get(work.id)))); setArticles(Object.fromEntries(posts.map(post => [post.id, post])))
+      setMessage(`已读取 ${works.length} 条作品的最新草稿与发布状态。`)
     } catch (error) { setMessage((error as Error).message) }
     finally { setBusy(false) }
   }
@@ -50,19 +52,22 @@ export function WorksTable() {
   }, [dirtyCount])
 
   function change(id: number, patch: Partial<WorkValues>) {
-    setRows(current => current.map(row => row.base.id === id ? { ...row, values: { ...row.values, ...patch }, error: undefined, saved: false } : row))
+    setRows(current => current.map(row => row.base.id === id ? { ...row, values: { ...row.values, ...patch }, error: undefined, saved: undefined } : row))
   }
-  function mergeWork(work: TableWork) {
-    setRows(current => {
-      const found = current.find(row => row.base.id === work.id)
-      if (!found) return [rowFor(work), ...current]
-      return current.map(row => row.base.id !== work.id ? row : isWorkDirty(row.base, row.values)
-        ? { ...row, error: '详情已保存，表格仍有未保存修改。请先核对，避免覆盖。' } : rowFor(work))
-    })
+  async function mergeWork(work: TableWork) {
+    try {
+      const { latest, publishedBase } = await readTableWork(work.id)
+      setRows(current => {
+        const found = current.find(row => row.base.id === work.id)
+        if (!found) return [rowFor(latest, publishedBase), ...current]
+        return current.map(row => row.base.id !== work.id ? row : isWorkDirty(row.base, row.values)
+          ? { ...row, error: '详情已保存，表格仍有未保存修改。请先核对，避免覆盖。' } : rowFor(latest, publishedBase))
+      })
+    } catch (error) { setMessage(`详情保存后的状态需要核对：${(error as Error).message}`) }
   }
   function added(work: TableWork) {
-    mergeWork(work); setQuery(work.title); setType(''); setStatus(''); setMissing(''); setPage(1)
-    setMessage(`已定位作品：${work.title}。评分、时间和笔记关联可继续编辑后统一保存。`)
+    void mergeWork(work); setQuery(work.title); setType(''); setStatus(''); setMissing(''); setPage(1)
+    setMessage(`已定位作品：${work.title}。可继续保存草稿；需要上站时再主动发布。`)
   }
 
   async function save() {
@@ -71,21 +76,31 @@ export function WorksTable() {
     for (const row of rows.filter(row => isWorkDirty(row.base, row.values))) {
       try {
         const patch = workPatch(row.base, row.values)
-        const current = await tableRequest<TableWork>(`works/${row.base.id}?depth=0`)
-        if (current.updatedAt !== row.base.updatedAt) throw Error('记录已被其他操作更新。输入已保留，请查看详情核对后再决定。')
-        const params = new URLSearchParams({ depth: '0', 'where[and][0][id][equals]': String(row.base.id), 'where[and][1][updatedAt][equals]': row.base.updatedAt })
-        const result = await tableRequest<{ docs: TableWork[]; errors?: unknown[] }>(`works?${params}`, 'PATCH', patch)
-        if (result.errors?.length || result.docs?.length !== 1) throw Error('保存未成功，可能存在编辑冲突或内容错误；输入已保留。')
-        const saved = result.docs[0]
-        setRows(current => current.map(item => item.base.id === row.base.id ? { ...rowFor(saved), saved: true } : item))
+        const saved = await writeTableWork('save-draft', row.base, row.publishedBase, patch)
+        setRows(current => current.map(item => item.base.id === row.base.id
+          ? { ...rowFor(saved.latest, saved.publishedBase), saved: '已保存草稿' } : item))
         success++
       } catch (error) {
         failed++
         setRows(current => current.map(item => item.base.id === row.base.id ? { ...item, error: (error as Error).message } : item))
       }
     }
-    setMessage(`保存成功 ${success} 条，未保存 ${failed} 条。${failed ? '失败行的输入已保留，请查看对应提示。' : '公开内容将在停止编辑约 3 分钟并完成构建后更新。'}`)
+    setMessage(`草稿保存成功 ${success} 条，未保存 ${failed} 条。${failed ? '失败行的输入已保留，请查看对应提示。' : '现有公开版本继续保留；主动发布后网站才会更新。'}`)
     setBusy(false)
+  }
+
+  async function publication(row: Row, action: 'publish' | 'unpublish') {
+    setBusy(true)
+    try {
+      const saved = await writeTableWork(action, row.base, row.publishedBase)
+      const label = action === 'publish' ? (saved.latest.visibility === 'public' ? '已发布，等待网站更新' : '已发布为私密记录') : '已下架，草稿与历史已保留'
+      setRows(current => current.map(item => item.base.id === row.base.id
+        ? { ...rowFor(saved.latest, saved.publishedBase), saved: label } : item))
+      setMessage(`${row.base.title}：${label}。${action === 'publish' && saved.latest.visibility === 'public' ? '停止编辑约 3 分钟并完成构建后更新网站。' : ''}`)
+    } catch (error) {
+      setRows(current => current.map(item => item.base.id === row.base.id ? { ...item, error: (error as Error).message } : item))
+      setMessage('操作未确认成功，请查看该行提示；输入已保留。')
+    } finally { setBusy(false) }
   }
 
   const visible = rows.filter(({ base }) => (!query || [base.title, ...(base.aliases || [])].some(text => text.toLowerCase().includes(query.toLowerCase())))
@@ -105,18 +120,19 @@ export function WorksTable() {
       <select aria-label="筛选待补充信息" value={missing} onChange={event => filter(setMissing, event.target.value)}><option value="">全部记录</option><option value="rating">未评分</option><option value="date">未填结束时间</option></select>
       <button type="button" disabled={busy} onClick={() => setAdding('completed')}>＋记录作品</button>
       <button type="button" disabled={busy} onClick={() => setAdding('planned')}>加入待体验</button>
-      <button type="button" disabled={busy || !dirtyCount} onClick={() => void save()}>保存修改（{dirtyCount}）</button>
+      <button type="button" disabled={busy || !dirtyCount} onClick={() => void save()}>保存草稿（{dirtyCount}）</button>
       <button type="button" disabled={busy || Boolean(dirtyCount)} onClick={() => void load()}>刷新列表</button>
     </div>
     <p role="status" aria-live="polite">{message}</p>
-    <p className="works-table__muted">关联笔记可选择已有文章或新建，仍需保存表格关联。草稿不会自动发布；短感受留空时使用文章标题。离开页面前请保存修改。</p>
+    <p className="works-table__muted">保存草稿保留网站旧版本。每行主动发布后，按所选可见性更新；下架保留草稿和历史。关联文章有独立发布状态，保存作品不会发布文章。短感受留空时使用文章标题。</p>
     <div className="works-table__scroll">
       <table><caption>全部作品及个人记录，共 {rows.length} 条；当前筛选 {visible.length} 条</caption>
-        <thead><tr>{['作品', '状态', '个人评分', '开始时间', '结束时间', '短感受', '关联笔记', '可见性', '保存情况'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <thead><tr>{['作品', '状态', '个人评分', '开始时间', '结束时间', '短感受', '关联笔记', '发布时可见性', '草稿与发布'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{visible.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(row => <WorkTableRow key={row.base.id} row={row} articles={articles} disabled={busy}
           onChange={patch => change(row.base.id, patch)} onArticle={post => setArticles(current => ({ ...current, [post.id]: post }))} onWork={mergeWork}
           onRemove={() => setRows(current => current.filter(item => item.base.id !== row.base.id))}
-          onReset={() => { if (window.confirm('放弃本行未保存的输入，重新读取最新记录？')) void tableRequest<TableWork>(`works/${row.base.id}?depth=0`).then(work => setRows(current => current.map(item => item.base.id === work.id ? rowFor(work) : item))).catch(error => setMessage(error.message)) }} />)}</tbody>
+          onPublish={() => void publication(row, 'publish')} onUnpublish={() => void publication(row, 'unpublish')}
+          onReset={() => { if (window.confirm('放弃本行未保存的输入，重新读取最新记录？')) void readTableWork(row.base.id).then(({ latest, publishedBase }) => setRows(current => current.map(item => item.base.id === latest.id ? rowFor(latest, publishedBase) : item))).catch(error => setMessage(error.message)) }} />)}</tbody>
       </table>
       {!visible.length && !busy && <p>没有符合筛选条件的作品。</p>}
     </div>
@@ -129,10 +145,10 @@ export function WorksTable() {
   </div>
 }
 
-function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, onReset, onRemove }: {
+function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, onReset, onRemove, onPublish, onUnpublish }: {
   row: Row; articles: Record<number, ArticleSummary>; disabled: boolean
   onChange: (patch: Partial<WorkValues>) => void; onArticle: (post: ArticleSummary) => void
-  onWork: (work: TableWork) => void; onReset: () => void; onRemove: () => void
+  onWork: (work: TableWork) => void; onReset: () => void; onRemove: () => void; onPublish: () => void; onUnpublish: () => void
 }) {
   const { base: work, values } = row
   const article = values.article ? articles[values.article] : undefined
@@ -142,8 +158,8 @@ function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, on
       {work.coverUrl && <img className="works-table__cover" src={work.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />}{work.title}</a>
       <small>{dictionaries.zh[work.type]}{(work.experiences?.length || 0) > 1 ? ` · ${work.experiences!.length} 次体验` : ''}</small>
       <Drawer redirectAfterDuplicate={false} redirectAfterDelete={false} onDelete={() => { onRemove(); drawer.closeDrawer() }}
-        onDuplicate={async ({ doc }) => { onWork(await tableRequest<TableWork>(`works/${doc.id}?depth=0`)); drawer.closeDrawer() }}
-        onSave={async () => { const saved = await tableRequest<TableWork>(`works/${work.id}?depth=0`); onWork(saved); drawer.closeDrawer() }} />
+        onDuplicate={async ({ doc }) => { onWork(await tableRequest<TableWork>(`works/${doc.id}?depth=0&draft=true`)); drawer.closeDrawer() }}
+        onSave={async () => { const saved = await tableRequest<TableWork>(`works/${work.id}?depth=0&draft=true`); onWork(saved); drawer.closeDrawer() }} />
     </td>
     <td><select aria-label={`${work.title}状态`} value={values.status} disabled={disabled} onChange={event => onChange({ status: event.target.value })}><option value="">未填写</option>{statuses.map(value => <option key={value} value={value}>{dictionaries.zh[value]}</option>)}</select></td>
     <td><input aria-label={`${work.title}评分`} className="works-table__rating" type="number" min="0" max="10" step="0.1" value={values.rating} disabled={disabled} onChange={event => onChange({ rating: event.target.value })} /></td>
@@ -152,6 +168,12 @@ function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, on
     <td><textarea aria-label={`${work.title}短感受`} rows={2} value={values.note} placeholder={article?.title || ''} disabled={disabled} onChange={event => onChange({ note: event.target.value })} /></td>
     <td><ArticleCell title={work.title} articleID={values.article} article={article} disabled={disabled} onArticle={onArticle} onChange={article => onChange({ article })} /></td>
     <td><select aria-label={`${work.title}可见性`} value={values.visibility} disabled={disabled} onChange={event => onChange({ visibility: event.target.value })}><option value="private">私密</option><option value="public">公开</option></select></td>
-    <td><span role={row.error ? 'alert' : undefined}>{row.error || (isWorkDirty(work, values) ? '待保存' : row.saved ? '已保存' : '—')}</span>{row.error && <button type="button" disabled={disabled} onClick={onReset}>重新读取本行</button>}</td>
+    <td><strong>{workPublicationLabel(work, row.publishedBase)}</strong><small role={row.error ? 'alert' : undefined}>{row.error || (isWorkDirty(work, values) ? '有未保存修改，请先保存草稿' : row.saved || '所有输入已保存')}</small>
+      <div className="works-table__actions">
+        <button type="button" aria-label={`${work.title}发布`} disabled={disabled || Boolean(row.error) || isWorkDirty(work, values) || work._status === 'published'} onClick={onPublish}>{values.visibility === 'public' ? '发布到网站' : '发布（私密）'}</button>
+        {row.publishedBase._status === 'published' && <button type="button" aria-label={`${work.title}下架`} disabled={disabled || Boolean(row.error) || isWorkDirty(work, values)} onClick={onUnpublish}>下架</button>}
+        {row.error && <button type="button" disabled={disabled} onClick={onReset}>重新读取本行</button>}
+      </div>
+    </td>
   </tr>
 }

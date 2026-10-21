@@ -17,6 +17,7 @@ import time
 BASE = Path(__file__).resolve().parent
 MIGRATIONS = 'services/payload/src/migrations'
 IMAGE_PATTERN = r'ghcr\.io/traceonsnow/homepage-payload@sha256:[0-9a-f]{64}'
+WORKS_DRAFT_MIGRATION = '20261021_034349_works_drafts'
 
 
 def validate_release(commit, image):
@@ -59,9 +60,24 @@ def migration_sources(repo, commit):
     return {name: git(repo, 'show', f'{commit}:{MIGRATIONS}/{name}.ts') for name in names}
 
 
-def check_migrations(database, target, previous):
+def check_release_compatibility(database, target):
+    """Never serve a migrated Works database with the legacy visibility-only API.
+
+    Check the physical schema too: an interrupted migration bookkeeping step
+    cannot authorize a legacy release. This guard never edits the database.
+    """
     if not database.is_file():
         raise ValueError('Existing database is required; refusing to create a replacement')
+    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+        applied = {row[0] for row in connection.execute('SELECT name FROM payload_migrations')}
+        columns = {row[1] for row in connection.execute('PRAGMA table_info(works)')}
+        versions = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='_works_v'").fetchone()
+    if (WORKS_DRAFT_MIGRATION in applied or '_status' in columns or versions) and WORKS_DRAFT_MIGRATION not in target:
+        raise ValueError('Legacy release would bypass Work draft privacy; retain the schema and use a reviewed draft-compatible release')
+
+
+def check_migrations(database, target, previous):
+    check_release_compatibility(database, target)
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
         applied = [row[0] for row in connection.execute('SELECT name FROM payload_migrations ORDER BY id')]
         if connection.execute('PRAGMA quick_check').fetchone() != ('ok',):
@@ -99,6 +115,10 @@ class Deployment:
             'payload': {'image': image}, 'migrate': {'image': image}}}) + '\n')
         run([*self.compose, '-f', self.override.name, 'up', '-d', '--no-build', '--pull', 'never',
              '--wait', '--wait-timeout', '180', 'payload'], self.base)
+
+    def stop(self):
+        override = ['-f', self.override.name] if self.override.is_file() else []
+        run([*self.compose, *override, 'stop', 'payload'], self.base)
 
     def install_dependencies(self):
         run(['/usr/bin/npm', 'exec', '--yes', '--package=pnpm@10.28.2', '--', 'pnpm',
@@ -189,6 +209,7 @@ class Deployment:
                   'previous_files': {name: f'previous-{index}' for index, name in enumerate(saved)}}
         write_private(backup / 'release.json', json.dumps(record, indent=2) + '\n')
         switched = False
+        application_ready = False
         build_environment = {key: environment[key] for key in ('CONTENT_SOURCE', 'CONTENT_BUILD_TOKEN') if key in environment}
         previous_environment = {key: os.environ.get(key) for key in ('CONTENT_SOURCE', 'CONTENT_BUILD_TOKEN')}
         os.environ['CONTENT_SOURCE'] = 'files'
@@ -203,6 +224,7 @@ class Deployment:
             self.install_dependencies()
             write_private(self.base / 'publish-library.py', (self.repo / 'deploy/server/publish-library.py').read_text())
             self.up(image)
+            application_ready = True
             self.publish()
             self.restore_generated_cache()
             record['site'] = os.readlink(current)
@@ -211,6 +233,27 @@ class Deployment:
             print('Deployed commit:', commit, 'static release:', record['site'])
         except Exception:
             if switched:
+                try:
+                    check_release_compatibility(database, previous)
+                except Exception as compatibility_error:
+                    # Do not restore an old image, checkout or publisher after
+                    # Works drafts exist: its visibility-only read boundary can
+                    # expose unpublished drafts. Keep a healthy candidate; when
+                    # startup did not finish, stop the possibly legacy service.
+                    errors = [str(compatibility_error)]
+                    if not application_ready:
+                        try:
+                            self.stop()
+                        except Exception as error:
+                            errors.append(f'Could not stop unverified application: {error}')
+                    try:
+                        set_current(self.base, old_site)
+                    except Exception as error:
+                        errors.append(f'Could not restore previous static site: {error}')
+                    errors.append(f'Retain database/schema and candidate source; inspect {backup}. '
+                                  + ('Candidate application passed startup checks.' if application_ready else 'Application startup was not verified; keep writes paused.'))
+                    write_private(blocked, '\n'.join(errors) + '\n')
+                    raise RuntimeError('Unsafe legacy rollback blocked; data preserved; verify application and previous static release before resuming') from compatibility_error
                 print('Deployment failed; restoring previous application and static release', file=sys.stderr)
                 # Restore the application before releasing the content publication lock.
                 # Never restore SQLite/media automatically: preserve writes made during this attempt.

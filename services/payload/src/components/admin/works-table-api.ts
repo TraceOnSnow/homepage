@@ -1,3 +1,6 @@
+import type { Work } from '../../payload-types'
+import { workPublicationData, type TableWork } from '../../lib/works-table'
+
 export async function tableRequest<T>(route: string, method = 'GET', data?: unknown): Promise<T> {
   const response = await fetch(`/api/${route}`, {
     method, credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(30_000),
@@ -18,4 +21,44 @@ export async function tableDocuments<T extends { id: number }>(resource: string)
     if (!result.docs.length) throw Error('分页结果不完整，请刷新重试。')
   }
   throw Error('记录超过本次读取上限，请使用原生作品列表。')
+}
+
+export async function readTableWork(id: number, request: typeof tableRequest = tableRequest) {
+  const [latest, publishedBase] = await Promise.all([
+    request<TableWork>(`works/${id}?depth=0&draft=true`),
+    request<TableWork>(`works/${id}?depth=0&draft=false`),
+  ])
+  return { latest, publishedBase }
+}
+
+/** Standard REST only. These checks are optimistic, not an atomic cross-editor lock. */
+export async function writeTableWork(
+  action: 'save-draft' | 'publish' | 'unpublish',
+  reviewed: TableWork,
+  reviewedBase: TableWork,
+  patch: Partial<Work> = {},
+  request: typeof tableRequest = tableRequest,
+) {
+  const current = await readTableWork(reviewed.id, request)
+  if (!reviewed.updatedAt || !reviewedBase.updatedAt || current.latest.updatedAt !== reviewed.updatedAt
+    || current.publishedBase.updatedAt !== reviewedBase.updatedAt) throw Error('记录已被其他操作更新。输入已保留，请查看详情核对后再决定。')
+  const saveDraft = action === 'save-draft'
+  const payload = saveDraft ? { ...patch, _status: 'draft' as const }
+    : { ...workPublicationData(current.latest), _status: action === 'publish' ? 'published' as const : 'draft' as const }
+  // Native draft PATCH matches the latest version; publication matches the base.
+  const expected = saveDraft ? current.latest.updatedAt : current.publishedBase.updatedAt
+  const params = new URLSearchParams({
+    depth: '0', draft: String(saveDraft), 'where[and][0][id][equals]': String(reviewed.id),
+    'where[and][1][updatedAt][equals]': expected,
+  })
+  const refreshed = await request<TableWork>(`works/${reviewed.id}?depth=0&draft=true`)
+  if (refreshed.updatedAt !== reviewed.updatedAt) throw Error('记录已被其他操作更新。输入已保留，请核对最新草稿。')
+  const result = await request<{ docs: TableWork[]; errors?: unknown[] }>(`works?${params}`, 'PATCH', payload)
+  if (result.errors?.length || result.docs?.length !== 1) throw Error('保存未成功，可能存在编辑冲突或内容错误；输入已保留。')
+  // Read actual persisted versions, not the proposed PATCH, before reporting success.
+  const saved = await readTableWork(reviewed.id, request)
+  if (saved.latest._status !== payload._status || (!saveDraft && saved.publishedBase._status !== payload._status)) {
+    throw Error('操作后的发布状态需要核对。输入已保留，请刷新本行检查结果。')
+  }
+  return saved
 }

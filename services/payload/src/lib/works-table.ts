@@ -7,6 +7,24 @@ export type WorkValues = {
   note: string; article: number | null; visibility: string
 }
 
+/** A published version remains available while a separate latest draft is edited. */
+export function workPublicationLabel(latest: TableWork, published: TableWork): string {
+  if (latest._status === 'draft') {
+    if (published._status === 'published') return published.visibility === 'public' ? '草稿修改 · 旧版已公开' : '草稿修改 · 旧版已发布（私密）'
+    return '草稿'
+  }
+  return latest.visibility === 'public' ? '已发布 · 公开' : '已发布 · 私密'
+}
+
+/** Publishing/withdrawing must carry the latest draft, never just flip the base status. */
+export function workPublicationData(work: TableWork): Partial<Work> {
+  const fields: (keyof Work)[] = [
+    'title', 'slug', 'type', 'rating', 'status', 'tags', 'note', 'article', 'experiences', 'aliases',
+    'cover', 'coverUrl', 'releaseDate', 'creators', 'platforms', 'description', 'sources', 'visibility',
+  ]
+  return Object.fromEntries(fields.filter(key => work[key] !== undefined).map(key => [key, work[key]]))
+}
+
 export function workValues(work: TableWork): WorkValues {
   const last = work.experiences?.at(-1)
   return {

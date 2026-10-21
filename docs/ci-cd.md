@@ -63,7 +63,9 @@
 
 正常失败会尝试恢复之前的应用镜像、Git 提交、依赖、发布器及静态目录，**不恢复数据库或 Media，不撤销部署期间的新内容**。恢复失败或进程被强制中断时保留 `evidence/deployment-blocked`，新版内容发布器暂停发布；依据私有发布记录检查服务、代码、配置和站点一致后，再由操作者移除阻断文件。不要仅删除文件来掩盖故障。
 
-成功记录在 `evidence/deployment.json`。需要主动撤回一个成功版本时，可重新手动部署其仍有可用 artifact 的成功 CI run；超过保留期时需人工选择保存的镜像与发布记录。数据库不兼容的旧版本会被迁移预检拒绝，转入单独恢复流程。
+Works 原生草稿迁移是明确的兼容例外：数据库已记录 `20261021_034349_works_drafts` 或存在物理 `_status`／`_works_v` 时，显式部署和自动回退均不能恢复 pre-drafts release。旧 API 只按 visibility 公开，会暴露新语义下的未发布草稿。新版驱动在不安全自动回退时恢复先前静态链接，保留兼容候选源码／publisher 和已健康的新应用；启动未验证时停止该 Payload 服务。数据库、媒体与草稿历史保留，deployment-blocked 留给操作者处理。首次升级必须先安装这个已审查驱动，日常发布不会自动更新它；完整步骤见 [Markdown library 协同切换](operations/markdown-library-rollout.md)。
+
+成功记录在 `evidence/deployment.json`。需要主动撤回一个成功版本时，可重新手动部署其仍有可用 artifact 且兼容现有 schema／草稿边界的成功 CI run；超过保留期时需人工选择保存的兼容镜像与发布记录。数据库不兼容的旧版本会被迁移预检拒绝，不能为绕过保护删除 migration 记录或恢复旧代码。静态回退目标取维护时实际 current，而不是可能早于后续内容更新的 deployment.json.site。
 
 首次验收需检查 Actions 全流程、线上 `/admin` 登录/写入、媒体、文章/作品更新后的内容发布、静态页面和一次失败回退。仓库测试不能替代线上网络、权限与持久化验收。
 

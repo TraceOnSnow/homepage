@@ -43,7 +43,7 @@ test('lists only Works with bounded pagination and explicit filters', async () =
     find: async (input: Record<string, unknown>) => { options = input; return { docs: [], totalDocs: 0, page: 2, hasNextPage: false } },
   })
   assert.equal(result.status, 200)
-  assert.deepEqual(options, { collection: 'works', overrideAccess: true, depth: 0, sort: 'id', page: 2, limit: 10, where: { and: [
+  assert.deepEqual(options, { collection: 'works', overrideAccess: true, draft: true, depth: 0, sort: 'id', page: 2, limit: 10, where: { and: [
     { title: { contains: 'Work' } }, { slug: { equals: 'work' } }, { 'sources.provider': { equals: 'igdb' } }, { 'sources.externalId': { equals: '1' } },
   ] } })
   for (const input of [{ limit: 101 }, { page: 0 }, { page: '1' }, { provider: 'igdb' }, { externalId: '1' }]) {
@@ -55,16 +55,18 @@ test('create defaults private and unknown status, preserving explicit personal f
   const created: Record<string, unknown>[] = []
   const payload = { create: async (input: Record<string, unknown>) => { created.push(input); return input.data } }
   assert.deepEqual((await call({ action: 'create', data: { title: 'Work', type: 'game', rating: 0, note: 'User note' } }, payload)).body,
-    { title: 'Work', slug: '', type: 'game', rating: 0, note: 'User note', visibility: 'private', status: null })
+    { title: 'Work', slug: '', type: 'game', rating: 0, note: 'User note', visibility: 'private', status: null, _status: 'draft' })
   const explicit = { title: 'Public', type: 'anime', status: 'completed', visibility: 'public', experiences: [{ id: 'existing', status: 'completed', note: 'Original date: 2025' }] }
-  assert.deepEqual((await call({ action: 'create', data: explicit }, payload)).body, { ...explicit, slug: '' })
+  assert.deepEqual((await call({ action: 'create', data: explicit }, payload)).body, { ...explicit, slug: '', _status: 'draft' })
   assert.equal(created[0].collection, 'works')
   assert.equal(created[0].depth, 0)
+  assert.equal(created[0].draft, true)
 })
 
 test('update and delete require a single ID and version, then constrain their Where', async () => {
   const requests: Record<string, unknown>[] = []
   const payload = {
+    findByID: async () => ({ updatedAt: version }),
     update: async (input: Record<string, unknown>) => { requests.push(input); return { docs: [{ id: 2, note: 'Changed' }], errors: [] } },
     delete: async (input: Record<string, unknown>) => { requests.push(input); return { docs: [{ id: 2 }], errors: [] } },
   }
@@ -73,8 +75,10 @@ test('update and delete require a single ID and version, then constrain their Wh
   assert.equal((await call({ action: 'delete', id: 2 }, payload)).status, 400)
   assert.equal((await call({ action: 'update', id: 2, expectedUpdatedAt: version, data: { note: 'Changed' } }, payload)).body.note, 'Changed')
   assert.deepEqual((await call({ action: 'delete', id: '2', expectedUpdatedAt: version }, payload)).body, { deleted: true, id: 2 })
+  assert.equal(requests[0].draft, true)
+  assert.deepEqual(requests[0].data, { note: 'Changed', _status: 'draft' })
   for (const request of requests) assert.deepEqual(request.where, { and: [{ id: { equals: 2 } }, { updatedAt: { equals: version } }] })
-  assert.equal((await call({ action: 'delete', id: 2, expectedUpdatedAt: version }, { delete: async () => ({ docs: [], errors: [] }) })).status, 409)
+  assert.equal((await call({ action: 'delete', id: 2, expectedUpdatedAt: version }, { findByID: async () => ({ updatedAt: version }), delete: async () => ({ docs: [], errors: [] }) })).status, 409)
   assert.equal((await call({ action: 'update', id: 2, expectedUpdatedAt: version, data: { rating: 20 } }, { update: async () => ({ docs: [], errors: [{ message: 'private internal error' }] }) })).status, 422)
 })
 
@@ -121,4 +125,23 @@ test('missing records and field validation have safe error responses', async () 
   assert.deepEqual(missing, { status: 404, body: { error: 'Work not found' } })
   const invalid = await call({ action: 'create', data: { title: 'Work', type: 'game', rating: 11 } }, { create: async () => { throw Object.assign(new Error('private validation dump'), { status: 400 }) } })
   assert.deepEqual(invalid, { status: 422, body: { error: 'Work validation failed' } })
+})
+
+test('a queued delete rechecks the latest draft after a preceding update commits', async () => {
+  const original = '2026-01-01T00:00:00.000Z'
+  let latest = original
+  let deleted = false
+  const payload = {
+    findByID: async ({ draft }: { draft: boolean }) => ({ updatedAt: draft ? latest : original }),
+    update: async () => {
+      await new Promise(resolve => setTimeout(resolve, 10))
+      latest = '2026-01-01T00:00:01.000Z'
+      return { docs: [{ id: 1, updatedAt: latest }], errors: [] }
+    },
+    delete: async () => { deleted = true; return { docs: [{ id: 1 }], errors: [] } },
+  }
+  const updated = call({ action: 'update', id: 1, expectedUpdatedAt: original, data: { note: 'New draft' } }, payload)
+  const removed = call({ action: 'delete', id: 1, expectedUpdatedAt: original }, payload)
+  assert.deepEqual((await Promise.all([updated, removed])).map(result => result.status), [200, 409])
+  assert.equal(deleted, false)
 })

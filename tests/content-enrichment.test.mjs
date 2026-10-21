@@ -63,7 +63,8 @@ test('CLI enrichment previews, checks versions, applies once and reads back; rep
       calls.push({ method, resource, input });
       if (method === 'GET') return structuredClone(stored);
       assert.equal(method, 'PATCH');
-      assert.deepEqual(input.data, { coverUrl: facts.coverUrl, creators: ['Author'] });
+      assert.deepEqual(input.data, { coverUrl: facts.coverUrl, creators: ['Author'], _status: 'draft' });
+      assert.equal(input.query.draft, 'true');
       assert.equal(input.query['where[and][1][updatedAt][equals]'], original.updatedAt);
       stored = { ...stored, ...input.data, updatedAt: '2026-10-20T00:00:00.000Z' };
       return { docs: [structuredClone(stored)] };

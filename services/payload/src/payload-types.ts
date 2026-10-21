@@ -229,9 +229,13 @@ export interface Work {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Saving a draft keeps the live version. Only published public Works are visible.
+   */
   visibility: 'public' | 'private';
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -492,6 +496,7 @@ export interface WorksSelect<T extends boolean = true> {
   visibility?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

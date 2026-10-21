@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { Endpoint, PayloadRequest, Where } from 'payload'
 import { metadataService } from './metadata/endpoint'
 import { workTypes, type WorkType } from './metadata/types'
+import { httpURL } from '../collections/shared'
 
 const headers = { 'Cache-Control': 'private, no-store' }
 const maxBytes = 256 * 1024
@@ -59,6 +60,12 @@ function data(value: unknown): RecordValue {
   if ('type' in result) type(result.type)
   if ('generateSlug' in result && typeof result.generateSlug !== 'boolean') throw new InputError('Invalid slug option')
   if ('rating' in result && result.rating !== null && (typeof result.rating !== 'number' || !Number.isFinite(result.rating))) throw new InputError('Invalid rating')
+  // Native drafts allow incomplete fields. Keep the old capability's explicit
+  // rating/URL/status validation while changing its writes to private drafts.
+  if (typeof result.rating === 'number' && (result.rating < 0 || result.rating > 10)) throw new InputError('Work validation failed', 422)
+  if (result.coverUrl && httpURL(result.coverUrl) !== true) throw new InputError('Work validation failed', 422)
+  if (result.status != null && !['planned', 'in-progress', 'completed', 'on-hold', 'dropped'].includes(String(result.status))) throw new InputError('Work validation failed', 422)
+  if (result.visibility != null && !['public', 'private'].includes(String(result.visibility))) throw new InputError('Work validation failed', 422)
   for (const field of ['cover', 'article']) if (field in result && result[field] !== null) identifier(result[field])
   for (const field of stringArrays) {
     if (field in result && result[field] !== null && (!Array.isArray(result[field]) || !(result[field] as unknown[]).every(value => typeof value === 'string'))) throw new InputError('Invalid text array')
@@ -95,7 +102,7 @@ async function readBody(req: PayloadRequest): Promise<RecordValue> {
 }
 
 // This capability never creates a Payload administrator session. The only collection
-// passed to Local API is Works; normal field validation/hooks still run.
+// passed to Local API is Works. Hooks still run; draft field checks are above.
 export const libraryAgentEndpoint: Endpoint = {
   path: '/library-agent', method: 'post',
   handler: async req => {
@@ -121,17 +128,17 @@ export const libraryAgentEndpoint: Endpoint = {
         if (input.provider !== undefined) {
           and.push({ 'sources.provider': { equals: text(input.provider, 100) } }, { 'sources.externalId': { equals: text(input.externalId, 150) } })
         }
-        result = await payload.find({ collection: 'works', overrideAccess: true, depth: 0, sort: 'id', page: integer(input.page, 1, 1_000_000), limit: integer(input.limit, 25, 100), where: and.length ? { and } : undefined })
+        result = await payload.find({ collection: 'works', overrideAccess: true, draft: true, depth: 0, sort: 'id', page: integer(input.page, 1, 1_000_000), limit: integer(input.limit, 25, 100), where: and.length ? { and } : undefined })
       } else if (action === 'get') {
         keys(input, ['action', 'id'])
-        result = await payload.findByID({ collection: 'works', id: identifier(input.id), overrideAccess: true, depth: 0 })
+        result = await payload.findByID({ collection: 'works', id: identifier(input.id), overrideAccess: true, draft: true, depth: 0 })
       } else if (action === 'create') {
         keys(input, ['action', 'data'])
         const patch = data(input.data)
         const visibility = patch.visibility === undefined ? 'private' : patch.visibility
         if (visibility !== 'public' && visibility !== 'private') throw new InputError('Work validation failed', 422)
-        result = await payload.create({ collection: 'works', overrideAccess: true, depth: 0, data: {
-          status: null, ...patch, visibility, slug: typeof patch.slug === 'string' ? patch.slug : '',
+        result = await payload.create({ collection: 'works', overrideAccess: true, draft: true, depth: 0, data: {
+          _status: 'draft', status: null, ...patch, visibility, slug: typeof patch.slug === 'string' ? patch.slug : '',
           title: text(patch.title, 1000), type: type(patch.type),
         } })
       } else if (action === 'update' || action === 'delete') {
@@ -139,11 +146,17 @@ export const libraryAgentEndpoint: Endpoint = {
         const id = identifier(input.id)
         const version = text(input.expectedUpdatedAt, 40)
         if (!Number.isFinite(Date.parse(version))) throw new InputError('Invalid expectedUpdatedAt')
-        const where: Where = { and: [{ id: { equals: id } }, { updatedAt: { equals: version } }] }
         const patch = action === 'update' ? data(input.data) : undefined
         result = await mutate(async () => {
+          let baseline = version
+          if (action === 'delete') {
+            const latest = await payload.findByID({ collection: 'works', id, draft: true, depth: 0 })
+            if (latest.updatedAt !== version) throw new InputError('Work changed; read it again', 409)
+            baseline = (await payload.findByID({ collection: 'works', id, draft: false, depth: 0 })).updatedAt
+          }
+          const where: Where = { and: [{ id: { equals: id } }, { updatedAt: { equals: baseline } }] }
           const changed = action === 'update'
-            ? await payload.update({ collection: 'works', overrideAccess: true, depth: 0, where, limit: 1, data: patch! })
+            ? await payload.update({ collection: 'works', overrideAccess: true, draft: true, depth: 0, where, limit: 1, data: { ...patch!, _status: 'draft' } })
             : await payload.delete({ collection: 'works', overrideAccess: true, depth: 0, where })
           if (changed.errors.length) throw new InputError('Work validation failed', 422)
           if (changed.docs.length !== 1) throw new InputError('Work changed or no longer exists; read it again', 409)

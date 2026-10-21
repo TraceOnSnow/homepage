@@ -59,6 +59,8 @@ systemctl --user status homepage-cert-renew.timer --no-pager
 
 `deploy-release.py` 与内容发布器共用锁，使用指定提交及 GHCR 镜像摘要，拒绝待执行的数据库迁移；失败尝试回退应用和静态站，保留数据。`ssh-deploy.py` 是专用 SSH 公钥的受限入口。日常部署只更新已审查的发布器源码，不覆盖生产 Compose、systemd、Nginx 或私密配置。`compose.release.yaml` 是部署器生成的私有镜像覆盖配置；手动管理容器时使用 `docker compose --env-file runtime.env -f compose.yaml -f compose.release.yaml ...`，不要无意切回旧的本地镜像。
 
+Works 草稿迁移后只允许兼容 release 回退；旧 visibility-only API 不能服务新草稿 schema。新版驱动在这类不安全自动回退时保留数据和兼容候选，恢复旧静态链接并留下 deployment-blocked；候选启动未验证则停止该服务。首次升级前需单独安装已审查的新驱动，不能只更新 publisher。完整维护锁、备份、副本演练和协同切换见 [Markdown library rollout](../../docs/operations/markdown-library-rollout.md)；不要先修改生产 checkout，内容 timer 会直接读取其中的前端源码。
+
 ## 已知边界
 
 - BGG / Bangumi 上游故障排查、脱敏采集工具和实际证据边界见 [诊断工具说明](diagnostics/README.md) 与 [2026-10-18 排查报告](../../docs/operations/metadata-investigation-2026-10-18.md)。原始响应和运行日志仍留在仓库外的 evidence 目录；这些工具不会自动修复或更改网络。

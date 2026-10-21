@@ -11,7 +11,7 @@ const plan = JSON.parse(await readFile(manifest, 'utf8')) as Array<{ file: strin
 if (!Array.isArray(plan) || !plan.length) throw new Error('Nonempty import plan required')
 const payload = await getPayload({ config })
 try {
-  const existing = await payload.find({ collection: 'posts', pagination: false, limit: 10000, depth: 0 })
+  const existing = await payload.find({ collection: 'posts', pagination: false, draft: true, limit: 10000, depth: 0 })
   const routes = new Set(existing.docs.map(post => `${post.locale}/${post.link}`))
   for (const item of plan) {
     if (typeof item.data.link !== 'string' || !Array.isArray(item.works)) throw new Error('Invalid import plan')
@@ -24,7 +24,7 @@ try {
       associations.set(slug, item.data.link)
     }
   }
-  const works = await payload.find({ collection: 'works', pagination: false, limit: 10000, depth: 0 })
+  const works = await payload.find({ collection: 'works', pagination: false, draft: true, limit: 10000, depth: 0 })
   for (const slug of associations.keys()) {
     const work = works.docs.find(work => work.slug === slug)
     if (!work || work.article) throw new Error(`Missing Work or existing article association: ${slug}`)
@@ -44,7 +44,7 @@ try {
       }
       for (const [slug, link] of associations) {
         const work = works.docs.find(work => work.slug === slug)!
-        await payload.update({ collection: 'works', id: work.id, data: { article: ids.get(link) }, req })
+        await payload.update({ collection: 'works', id: work.id, draft: true, data: { article: ids.get(link), _status: 'draft' }, req })
       }
       await payload.db.commitTransaction(transactionID)
     } catch (error) { await payload.db.rollbackTransaction(transactionID); throw error }

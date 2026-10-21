@@ -7,6 +7,7 @@ const workSchema = z.object({
   title: z.string().min(1),
   type: z.enum(WORK_TYPES),
   visibility: z.literal('public'),
+  _status: z.literal('published'),
   status: z.enum(WORK_STATUSES).nullish(),
   rating: z.number().min(0).max(10).nullish(),
   releaseDate: z.string().nullish(),
@@ -39,8 +40,16 @@ export function safePublicURL(value: string | null | undefined, base?: string): 
 }
 
 export function publicLibraryWork(input: unknown, base: string): LibraryWork | undefined {
-  // Defense in depth: even an accidentally authenticated response cannot publish private Works.
-  if (!input || typeof input !== 'object' || !('visibility' in input) || input.visibility !== 'public') return undefined;
+  // Defense in depth: authenticated/frozen snapshots must not expose latest drafts.
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    !('visibility' in input) ||
+    input.visibility !== 'public' ||
+    !('_status' in input) ||
+    input._status !== 'published'
+  )
+    return undefined;
   const result = workSchema.safeParse(input);
   if (!result.success) throw new Error('Library received an invalid public Work. Check the Payload schema.');
   const work = result.data;
@@ -95,7 +104,9 @@ export async function fetchLibraryWorks(base: string, fetcher: typeof fetch = fe
       limit: '100',
       page: String(page),
       sort: 'slug',
+      draft: 'false',
       'where[visibility][equals]': 'public',
+      'where[_status][equals]': 'published',
     }).toString();
     const response = await fetcher(url, {
       headers: { Accept: 'application/json' },

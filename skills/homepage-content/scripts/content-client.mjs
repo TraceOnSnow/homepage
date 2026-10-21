@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { workEnrichment } from './work-enrichment.mjs';
 
-const usage = `homepage-content works|posts list|get|create|update|delete; works import FILE [--apply]; works enrich ID FILE [--apply]; works link; posts publish|unpublish; metadata search|details.
+const usage = `homepage-content works|posts list|get|create|update|delete; works import FILE [--apply]; works enrich ID FILE [--apply]; works link; works|posts publish|unpublish; metadata search|details.
 Examples: posts create article.json [--markdown body.md] [--apply]; posts update ID patch.json [--apply];
 posts publish ID [--apply]; works link WORK_ID POST_ID [--apply].
 List filters: --query TEXT --slug SLUG --link LINK --locale zh --page N --limit N.
@@ -94,7 +94,7 @@ function validateData(value, resource) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Expected a content JSON object');
   const fields = resource === 'works' ? workFields : postFields;
   if (Object.keys(value).some((key) => !fields.includes(key)))
-    throw Error('Unsupported content field; use publish/unpublish for article status');
+    throw Error('Unsupported content field; use publish/unpublish for publication status');
   if (value.markdown?.length > 1_000_000) throw Error('Markdown exceeds the Posts field limit');
   return value;
 }
@@ -156,7 +156,7 @@ function batchMatch(data, documents) {
 async function listAllWorks(request) {
   const documents = [];
   for (let page = 1; ; page++) {
-    const result = await request('GET', 'works', { query: { limit: '100', page: String(page) } });
+    const result = await request('GET', 'works', { query: { limit: '100', page: String(page), draft: 'true' } });
     if (!Array.isArray(result.docs) || (result.hasNextPage && result.docs.length === 0))
       throw Error('Unexpected Works page; refusing an incomplete duplicate check');
     documents.push(...result.docs);
@@ -196,6 +196,7 @@ async function importWorks(file, apply, request) {
       throw Error('Work sources require provider and externalId strings');
     data.visibility ??= 'private';
     if (!Object.hasOwn(data, 'status')) data.status = 'completed';
+    data._status = 'draft';
     return data;
   });
   let documents = await listAllWorks(request);
@@ -218,9 +219,9 @@ async function importWorks(file, apply, request) {
       continue;
     }
     try {
-      const result = await request('POST', 'works', { data });
+      const result = await request('POST', 'works', { data, query: latestQuery('works') });
       if (!result.doc?.id) throw Error('Unexpected create response');
-      const current = await request('GET', 'works', { id: result.doc.id });
+      const current = await request('GET', 'works', { id: result.doc.id, query: latestQuery('works') });
       if (
         current.title !== data.title ||
         current.type !== data.type ||
@@ -300,7 +301,7 @@ function parameters(args) {
 }
 
 function latestQuery(resource) {
-  return resource === 'posts' ? { draft: 'true' } : {};
+  return ['works', 'posts'].includes(resource) ? { draft: 'true' } : {};
 }
 function conditions(id, updatedAt) {
   return { 'where[and][0][id][equals]': String(id), 'where[and][1][updatedAt][equals]': updatedAt, limit: '1' };
@@ -341,7 +342,6 @@ export async function runCLI(argv, request) {
   }
   const counts = { get: 1, create: 1, update: 2, enrich: 2, delete: 1, publish: 1, unpublish: 1, link: 2 };
   if (!(action in counts) || args.length !== counts[action]) throw Error(usage);
-  if (['publish', 'unpublish'].includes(action) && resource !== 'posts') throw Error('Publishing applies only to posts');
   if (action === 'link' && resource !== 'works') throw Error('Linking applies only to works');
   if (action === 'enrich' && resource !== 'works') throw Error('Enrichment applies only to works');
   if (options.has('markdown') && !['create', 'update'].includes(action)) throw Error('--markdown requires create or update');
@@ -354,11 +354,11 @@ export async function runCLI(argv, request) {
     } else {
       if (!data.title || !data.link) throw Error('New Posts require title and a stable permalink');
       data.locale ??= 'zh';
-      data._status = 'draft';
     }
+    data._status = 'draft';
     const query =
       resource === 'works'
-        ? { 'where[slug][equals]': data.slug }
+        ? { 'where[slug][equals]': data.slug, draft: 'true' }
         : { 'where[and][0][link][equals]': data.link, 'where[and][1][locale][equals]': data.locale, draft: 'true' };
     const existing = await request('GET', resource, { query: { ...query, limit: '1' } });
     if (existing.totalDocs !== 0) throw Error('Content already exists; inspect it before creating');
@@ -387,13 +387,13 @@ export async function runCLI(argv, request) {
     await request('GET', 'posts', { id: postID, query: latestQuery('posts') });
     data = { article: postID };
   }
-  if (action === 'publish') {
-    data = Object.fromEntries(postFields.filter((key) => current[key] !== undefined).map((key) => [key, current[key]]));
-    data._status = 'published';
+  if (['publish', 'unpublish'].includes(action)) {
+    const fields = resource === 'works' ? workFields : postFields;
+    data = Object.fromEntries(fields.filter((key) => current[key] !== undefined).map((key) => [key, current[key]]));
+    data._status = action === 'publish' ? 'published' : 'draft';
   }
-  if (action === 'unpublish') data = { _status: 'draft' };
-  // Editing a published article saves a separate draft; publication is an explicit action.
-  const saveDraft = resource === 'posts' && action === 'update';
+  // Editing saves a separate draft; visibility and publication are independent choices.
+  const saveDraft = ['update', 'enrich', 'link'].includes(action);
   if (saveDraft) data._status = 'draft';
   const preview = {
     resource,
@@ -405,7 +405,7 @@ export async function runCLI(argv, request) {
   };
   if (!options.get('apply')) return { dryRun: true, ...preview };
   // Non-draft bulk operations match the base document; drafts have their own timestamps.
-  const baseline = resource === 'posts' && !saveDraft ? await request('GET', resource, { id }) : current;
+  const baseline = !saveDraft ? await request('GET', resource, { id }) : current;
   const refreshed = await request('GET', resource, { id, query: latestQuery(resource) });
   if (refreshed.updatedAt !== expected) throw Error('Content changed since review; read it again');
   const result = await request(action === 'delete' ? 'DELETE' : 'PATCH', resource, {
@@ -415,7 +415,7 @@ export async function runCLI(argv, request) {
   if (result.errors?.length) throw Error('Payload rejected the content change; read it again before retrying');
   if (!Array.isArray(result.docs) || result.docs.length !== 1) throw Error('Content changed or disappeared; read it again');
   if (enrichment) {
-    const verified = await request('GET', resource, { id });
+    const verified = await request('GET', resource, { id, query: latestQuery(resource) });
     if (
       data.sources?.some(
         (source) =>

@@ -1,4 +1,20 @@
-# WSL 开发与部署交接
+# Homepage 开发与部署交接
+
+## 当前交付：同一仓库的 Markdown library / Works 草稿支持（2026-10-21）
+
+用户本轮明确允许在服务器继续开发。`/home/trace/projects/homepage-workflow-dev` 是**现有 Homepage 同一个 Git 仓库**的 `codex/markdown-publishing` worktree，与 `/home/trace/projects/homepage` 共用 Git 元数据；不是另建网站项目或另一套生产数据库。独立工作目录用于保留生产 checkout 中用户已有的 docs／skill 改动，避免运行中的内容 timer 读到尚未迁移的混合源码。下面 WSL 优先、旧字段和“下一版本”等记录保留为历史；本节及用户最新授权优先。
+
+当前源码已实现 Works 原生草稿／版本、显式发布和下架；作品表格、统一客户端和保留的旧工具都以保存草稿为默认行为。公开旧版本在编辑期间继续展示；发布／下架携带最新完整字段并保留数组 ID、部分日期、评分与关联。访客与冻结构建输入仅接受 `draft=false`、public+published，Markdown 工作区的 Works 正文不因此成为网站公开字段。网站仍独立使用 Payload、SQLite 和 Admin；Markdown library 普通程序使用现有标准 API，不增加模型服务或另一套网站存储。
+
+迁移 `20261021_034349_works_drafts` 和同名 schema JSON 已实现；需要无外层事务的专用迁移进程（`PAYLOAD_IMPORT_TRANSACTION=0`）。旧表原字段、关系和数组 ID 保留；旧公开作品初始化 published、私密作品初始化 draft。down 拒绝删除历史，仅允许使用 draft-compatible release 回退应用。后端、客户端、本机 HTTP 往返、生产构建及两条真实 Admin 浏览器场景已通过。新增部署保护另有 17 项临时 Git／SQLite 回归通过，防止迁移后旧 API 回退暴露草稿；没有因此执行生产迁移。
+
+已在只读一致备份的新私密副本上完成真实数据演练：585 Works、19 Posts，76 public→published、509 private→draft、585 初始版本；25 张旧表全部旧列逐行哈希及数组／关系 ID 不变，integrity／FK／schema／重复迁移通过。完整 latest/base、limit=100 分页、版本及原生 REST 草稿列表一致；匿名公开集合和私密／版本权限通过。发现并修正本轮新增迁移的版本 texts 路径为 `version.*`，未改旧文本表；补了四种文本数组、分页和单版本回归。原 before 备份 SHA 保持不变，报告在忽略的 `.cache/workflow-real-data/rehearsal-5ZVOm3/report.json`；可复现命令见上线计划。仅使用合成配置／内存身份与空隔离媒体，没有读取生产凭据、登录或监听服务。最终 release image 及上线时新备份仍需复核。
+
+源码、迁移、前端与运行目录 publisher 必须协调切换。运行中的旧 publisher 会 import 生产 checkout 的前端 sanitizer，提前拷贝新前端可能把旧 API 无 `_status` 的全部作品排除并构建成空媒体库；不得为了“放回原项目”先改生产源码。迁移后也不能仅保留新 schema 却回退旧 visibility-only API。部署失败时保留最后静态站，保留兼容的新应用／数据或进入维护状态；使用兼容 release 修复，不能 fresh/reset/down、恢复空库或覆盖期间的新编辑。
+
+完整的固定版本、备份／真实副本演练、维护锁、迁移／应用／publisher／前端切换及保留 schema 的回退步骤见 [Markdown library 上线计划](operations/markdown-library-rollout.md)。实际 `public/current` 可能因内容 timer 更新而晚于 `evidence/deployment.json.site`，必须在维护开始时现场捕获。已有生产 checkout 修改需先保留、审查；当前交付不覆盖它们。
+
+**当前状态是已验证源码交付，尚未生产部署。** 真实库／媒体／凭据／原管理员未改，未重启正式服务、未执行真实内容同步，也未接入用户的真实 Vault。生产镜像和静态站实际状态以当前运行 evidence 及现场只读核对为准；源码 worktree 的存在和测试通过不代表已上线。
 
 ## 工作边界
 

@@ -111,6 +111,102 @@ class DeploymentTests(unittest.TestCase):
         (self.base / 'evidence/library-publication.json').write_text('{"digest":"new"}')
         return True
 
+    def migrated_works(self):
+        """A real temporary Git upgrade and database with native draft semantics."""
+        self.git('checkout', '--quiet', '--detach', self.target)
+        directory = self.repo / deployer.MIGRATIONS
+        migration = deployer.WORKS_DRAFT_MIGRATION
+        (directory / f'{migration}.ts').write_text('// Reviewed native Works drafts migration\n')
+        (directory / 'index.ts').write_text(
+            "import * as initial from './001_initial';\n"
+            f"import * as drafts from './{migration}';\n"
+            f"export const migrations = [{{name: '001_initial'}}, {{name: '{migration}'}}];\n")
+        self.git('add', '.')
+        self.git('commit', '--quiet', '-m', 'native Works drafts')
+        self.target = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/main', self.target)
+        self.git('checkout', '--quiet', '--detach', self.previous)
+        with sqlite3.connect(self.database) as db:
+            db.execute('ALTER TABLE works ADD COLUMN _status TEXT')
+            db.execute("UPDATE works SET _status = 'published'")
+            db.execute('CREATE TABLE _works_v (id INTEGER PRIMARY KEY)')
+            db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (migration,))
+
+    def test_explicit_legacy_release_is_rejected_after_works_draft_migration(self):
+        self.migrated_works()
+        with self.assertRaisesRegex(ValueError, 'draft privacy'):
+            self.deployment.execute(self.previous, IMAGE)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), self.previous)
+        self.assertFalse(any('pull' in command or 'up' in command for command in self.commands))
+
+    def test_physical_draft_schema_blocks_legacy_even_without_migration_bookkeeping(self):
+        self.migrated_works()
+        with sqlite3.connect(self.database) as db:
+            db.execute('DELETE FROM payload_migrations WHERE name = ?', (deployer.WORKS_DRAFT_MIGRATION,))
+        with self.assertRaisesRegex(ValueError, 'draft privacy'):
+            deployer.check_release_compatibility(self.database, {'001_initial': 'source'})
+
+    def test_failed_upgrade_keeps_compatible_app_and_blocks_legacy_rollback(self):
+        self.migrated_works()
+        def fail():
+            self.publish()
+            with sqlite3.connect(self.database) as db:
+                db.execute("INSERT INTO works VALUES ('New unpublished private reaction', 'draft')")
+            raise RuntimeError('Synthetic build failure after draft edit')
+        with patch.object(self.deployment, 'publish', side_effect=fail):
+            with self.assertRaisesRegex(RuntimeError, 'Unsafe legacy rollback blocked'):
+                self.deployment.execute(self.target, IMAGE)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), self.target)
+        self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
+        self.assertEqual(json.loads((self.base / 'compose.release.yaml').read_text())['services']['payload']['image'], IMAGE)
+        self.assertEqual((self.base / 'publish-library.py').read_text(), (self.repo / 'deploy/server/publish-library.py').read_text())
+        self.assertEqual(sum('up' in command for command in self.commands), 1)
+        self.assertFalse(any('stop' in command for command in self.commands))
+        self.assertIn('draft privacy', (self.base / 'evidence/deployment-blocked').read_text())
+        with sqlite3.connect(self.database) as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM works WHERE _status='draft'").fetchone()[0], 1)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM _works_v').fetchone()[0], 0)
+        with self.assertRaisesRegex(ValueError, 'failed rollback'):
+            deployer.main(self.base, self.target, IMAGE)
+
+    def test_failed_upgrade_startup_stops_unverified_service_instead_of_legacy_restart(self):
+        self.migrated_works()
+        self.fail_up = True
+        with self.assertRaisesRegex(RuntimeError, 'Unsafe legacy rollback blocked'):
+            self.deployment.execute(self.target, IMAGE)
+        self.assertTrue(any('stop' in command and 'payload' in command for command in self.commands))
+        self.assertEqual(sum('up' in command for command in self.commands), 1)
+        self.assertTrue((self.base / 'evidence/deployment-blocked').exists())
+        self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
+
+    def test_failed_upgrade_before_app_switch_stops_possibly_legacy_service(self):
+        self.migrated_works()
+        with patch.object(self.deployment, 'install_dependencies', side_effect=RuntimeError('Synthetic dependency failure')):
+            with self.assertRaisesRegex(RuntimeError, 'Unsafe legacy rollback blocked'):
+                self.deployment.execute(self.target, IMAGE)
+        self.assertTrue(any('stop' in command and 'payload' in command for command in self.commands))
+        self.assertFalse(any('up' in command for command in self.commands))
+        self.assertEqual(self.git('rev-parse', 'HEAD'), self.target)
+        self.assertTrue((self.base / 'evidence/deployment-blocked').exists())
+        self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
+
+    def test_draft_compatible_previous_release_can_roll_back_without_restoring_database(self):
+        self.migrated_works()
+        self.previous = self.target
+        self.git('checkout', '--quiet', '--detach', self.previous)
+        (self.repo / 'release.txt').write_text('Next draft-compatible release\n')
+        self.git('add', '.')
+        self.git('commit', '--quiet', '-m', 'next compatible release')
+        self.target = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/main', self.target)
+        self.git('checkout', '--quiet', '--detach', self.previous)
+        with patch.object(self.deployment, 'publish', side_effect=RuntimeError('Synthetic build failure')):
+            with self.assertRaisesRegex(RuntimeError, 'Synthetic build failure'):
+                self.deployment.execute(self.target, IMAGE)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), self.previous)
+        self.assertFalse((self.base / 'evidence/deployment-blocked').exists())
+        self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
+
     def test_success_uses_exact_image_and_records_previous_release(self):
         (self.repo / '.cache/og-data.json').write_text('{"generated-before-deploy":true}')
         with patch.object(self.deployment, 'publish', side_effect=self.publish):

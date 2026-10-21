@@ -51,15 +51,15 @@ def read_works():
     docs = []
     for page in range(1, 1001):
         query = urllib.parse.urlencode({
-            'depth': 1, 'limit': 100, 'page': page, 'sort': 'slug',
-            'where[visibility][equals]': 'public',
+            'draft': 'false', 'depth': 1, 'limit': 100, 'page': page, 'sort': 'slug',
+            'where[visibility][equals]': 'public', 'where[_status][equals]': 'published',
         })
         with urllib.request.urlopen('http://127.0.0.1:3000/api/works?' + query, timeout=20) as response:
             data = json.load(response)
         if not isinstance(data.get('docs'), list) or not isinstance(data.get('hasNextPage'), bool):
             raise ValueError('Unexpected Works API response; keeping existing site')
         for doc in data['docs']:
-            if doc.get('visibility') != 'public':
+            if doc.get('visibility') != 'public' or doc.get('_status') != 'published':
                 raise ValueError('Unexpected nonpublic API document; keeping existing site')
             docs.append(doc)
         if not data['hasNextPage']:

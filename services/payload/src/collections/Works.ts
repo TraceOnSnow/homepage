@@ -1,5 +1,5 @@
 import { dictionaries } from '@/lib/ui/dictionary'
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Where } from 'payload'
 import { cover, httpURL, slug, tags, writes } from './shared'
 
 export { workTypes } from '@/lib/metadata/types'
@@ -10,8 +10,15 @@ const statusOptions = statuses.map(value => ({ value, label: { zh: dictionaries.
 
 export const Works: CollectionConfig = {
   labels: { singular: {zh: '作品', en: 'Works'}, plural: {zh: '作品', en: 'Works'} },
-  slug: 'works', admin: { useAsTitle: 'title', defaultColumns: ['title', 'type', 'rating', 'status'] },
-  access: { read: ({ req }) => req.user ? true : { visibility: { equals: 'public' } }, ...writes },
+  slug: 'works', admin: { useAsTitle: 'title', defaultColumns: ['title', 'type', 'rating', 'status', '_status'] },
+  versions: { drafts: true, maxPerDoc: 30 },
+  access: {
+    ...writes,
+    read: ({ req }): true | Where => req.user ? true : { and: [
+      { _status: { equals: 'published' } }, { visibility: { equals: 'public' } },
+    ] },
+    readVersions: ({ req }) => Boolean(req.user),
+  },
   fields: [
     { name: 'type', label: {zh: '类型', en: 'Type'}, type: 'select', required: true, defaultValue: 'game', options: workTypes.map(value => ({ value, label: { zh: dictionaries.zh[value], en: dictionaries.en[value] } })) },
     { name: 'metadataSearch', type: 'ui', admin: {
@@ -56,6 +63,6 @@ export const Works: CollectionConfig = {
       { name: 'url', label: {zh: '链接', en: 'URL'}, type: 'text', validate: httpURL },
       { name: 'fetchedAt', label: {zh: '获取时间', en: 'Fetched at'}, type: 'date' },
     ] },
-    { name: 'visibility', label: {zh: '可见性', en: 'Visibility'}, type: 'select', required: true, defaultValue: 'public', options: [{ value: 'public', label: { zh: '公开', en: 'Public' } }, { value: 'private', label: { zh: '私密', en: 'Private' } }], admin: { position: 'sidebar' } },
+    { name: 'visibility', label: {zh: '发布后的可见性', en: 'Visibility when published'}, type: 'select', required: true, defaultValue: 'private', options: [{ value: 'public', label: { zh: '公开', en: 'Public' } }, { value: 'private', label: { zh: '私密', en: 'Private' } }], admin: { position: 'sidebar', description: { zh: '保存草稿不会改变线上版本。只有明确发布且选择公开的作品才会展示。', en: 'Saving a draft keeps the live version. Only published public Works are visible.' } } },
   ],
 }

@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Current Authorized Development Environment
+
+The user explicitly approved server-side development for the unified Markdown-library workflow. Website changes belong to this existing Git repository. A worktree is a working directory for its development branch, not a separate website project; the deployed checkout must stay compatible with its running database and publisher until a coordinated release. This authorization supersedes older WSL-only development text below for this task. Use disposable SQLite/media/config for tests; do not migrate production data, restart production services, publish content, read/copy credentials or switch the production checkout as part of development. Shared dependency directories may be reused read-only; do not install into or mutate production node_modules. Cross-project contract is `/home/trace/projects/WORKFLOW.md`.
+
 ## Project Structure & Module Organization
 
 The repository root retains Astro Koharu's structure. Routes live in `src/pages/`, blog Markdown in `src/content/blog/`, components in `src/components/`, shared logic in `src/lib/`, and assets in `public/` and `src/assets/`. Tests are in `tests/` and colocated `*.test.ts` files. Site settings live in `config/site.yaml`.

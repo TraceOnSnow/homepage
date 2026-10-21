@@ -10,7 +10,7 @@ function requireWork(input: unknown, origin = base) {
   return result;
 }
 
-const work = { id: 1, slug: 'a-game', title: 'A game', type: 'game', visibility: 'public' };
+const work = { id: 1, slug: 'a-game', title: 'A game', type: 'game', visibility: 'public', _status: 'published' };
 
 test('Payload uses one selected article with language fallback and never revives stale Markdown associations', () => {
   const displayed = requireWork({ ...work, article: { id: 7, markdown: 'must-not-ship', title: 'backend title' } });
@@ -26,6 +26,8 @@ test('Payload uses one selected article with language fallback and never revives
 
 test('Library exports only public display fields and personal ratings, preserving a zero rating', () => {
   assert.equal(publicLibraryWork({ ...work, visibility: 'private', note: 'private note' }, base), undefined);
+  assert.equal(publicLibraryWork({ ...work, _status: 'draft', note: 'unpublished draft' }, base), undefined);
+  assert.equal(publicLibraryWork({ ...work, _status: undefined }, base), undefined);
   const displayed = requireWork(
     {
       ...work,
@@ -76,10 +78,19 @@ test('public API pagination sends no credentials, sanitizes records, and dedupli
     assert.equal(options?.headers && new Headers(options.headers).has('authorization'), false);
     assert.equal(options?.credentials, undefined);
     assert.equal(url.searchParams.get('where[visibility][equals]'), 'public');
+    assert.equal(url.searchParams.get('where[_status][equals]'), 'published');
+    assert.equal(url.searchParams.get('draft'), 'false');
     assert.equal(url.searchParams.get('depth'), '1');
     return Response.json(
       requests.length === 1
-        ? { docs: [work, { ...work, id: 2, visibility: 'private' }], hasNextPage: true }
+        ? {
+            docs: [
+              work,
+              { ...work, id: 2, visibility: 'private' },
+              { ...work, id: 4, _status: 'draft', note: 'PRIVATE_DRAFT_SENTINEL' },
+            ],
+            hasNextPage: true,
+          }
         : { docs: [work, { ...work, id: 3, slug: 'another-work' }], hasNextPage: false },
     );
   });

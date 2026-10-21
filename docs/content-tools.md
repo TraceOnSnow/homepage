@@ -43,14 +43,16 @@ node scripts/content-client.mjs posts create /private/article.json --markdown /p
 node scripts/content-client.mjs posts update 34 /private/post-patch.json --apply
 node scripts/content-client.mjs posts publish 34 --apply
 node scripts/content-client.mjs works link 12 34 --apply
+node scripts/content-client.mjs works publish 12 --apply
+node scripts/content-client.mjs works unpublish 12 --apply
 node scripts/content-client.mjs posts unpublish 34 --apply
 ```
 
-所有写命令默认只预览，`--apply` 才写入。新作品要求稳定 slug，默认私密、状态已完成；待体验显式设置 `status: "planned"`，未说明是否体验过时先核对或设 `null`。新文章要求稳定 link，默认保存草稿。文章 JSON 可设置 title、markdown、link、locale、publishedAt、description、tags、cover、categories、frontmatter；`--markdown` 从 UTF-8 文件读取正文，不转富文本。发布状态使用独立 publish/unpublish 命令。
+所有写命令默认只预览，`--apply` 才写入。新作品要求稳定 slug，默认私密草稿、状态已完成；待体验显式设置 `status: "planned"`，未说明是否体验过时先核对或设 `null`。新文章要求稳定 link，默认保存草稿。文章 JSON 可设置 title、markdown、link、locale、publishedAt、description、tags、cover、categories、frontmatter；`--markdown` 从 UTF-8 文件读取正文，不转富文本。发布状态使用独立 publish/unpublish 命令。
 
 体验时间沿用 `experiences[].startedOn/endedOn`，支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 或空；旧 ISO 时间戳保持兼容。通常只填写结束时间。进度、通关次数或备注统一写作品 `note`；旧体验记录的状态、平台、进度、备注不自动搬入公开短感受。更新数组时保留其他行、ID 和未修改的原始日期。后台批量整理入口为 `/admin/works-table`，见 [作品表格](works-table.md)。
 
-读取文章默认包含最新草稿。修改公开文章保存为新草稿，旧正文继续公开；publish 会发送最新草稿正文和原有设置，避免仅改发布状态而漏掉最新编辑。unpublish 下架，delete 删除；删除关联文章后 Payload 的现有外键把作品关联置空，原短感受保留。
+作品和文章的 list/get 默认读取最新草稿。create/import/update/enrich/link 保存草稿，不自动发布；公开旧版本在编辑期间继续展示。两类内容均使用独立 publish/unpublish：publish 发送最新草稿的全部可编辑字段及原有设置；unpublish 下架并保留最新未发布修改，delete 删除。作品的 visibility 与发布状态独立：只有 `_status: published` 且 `visibility: public` 才公开。publish 保留所选可见性，私密作品即使发布也不会展示；修改 visibility 后保存草稿不会改变公开旧版本。删除关联文章后 Payload 的现有外键把作品关联置空，原短感受保留。
 
 更新可附 `--expected-updated-at`，按审阅时的版本执行；客户端复查，标准批量 PATCH/DELETE 用 ID 和更新时间筛选并检查恰好一条成功。草稿与公开文档时间不同，因此发布／删除使用公开基表的筛选，同时复查最新草稿。这里不是跨管理员编辑的原子 CAS，发生冲突须读取核对；写入超时不得盲目重试创建。部分更新不发送未改字段；数组修改应保留原行 ID。
 
@@ -71,7 +73,7 @@ node scripts/content-client.mjs works import /private/works.json
 node scripts/content-client.mjs works import /private/works.json --apply
 ```
 
-预览读取全部分页并列出 create/existing/review，实际写入逐条 POST 后 GET 核对。默认 completed/private，显式未知状态 `null` 保留；评分、体验日期与短感受只来自用户资料。slug 先按 CMS 相同规则规范化并默认固定，避免大小写或标点造成误判。来源 ID 优先，标题／别名辅助查重；同名而来源不同、来源冲突或无关 slug 占用交给人工检查，不把它们误报为确定的同一作品。清单内部重复也会跳过。已有作品不会被 PATCH、发布或删除。
+预览读取全部分页并列出 create/existing/review，实际写入逐条 POST 后 GET 核对。默认 completed/private/draft，显式未知状态 `null` 保留；评分、体验日期与短感受只来自用户资料。slug 先按 CMS 相同规则规范化并默认固定，避免大小写或标点造成误判。来源 ID 优先，标题／别名辅助查重；同名而来源不同、来源冲突或无关 slug 占用交给人工检查，不把它们误报为确定的同一作品。清单内部重复也会跳过。已有作品不会被 PATCH、发布或删除。
 
 它不解析自然语言、不自动挑选元数据候选、不调用模型。Agent 先整理一次名单、检索并审阅身份，再由普通程序执行创建和核对，避免每条作品反复经过模型。书名明确但外部资料不可靠时可以只建基础记录；系列和作者名称仍留待确认。
 
@@ -101,7 +103,7 @@ node scripts/content-client.mjs works enrich 12 /private/facts.json --expected-u
 node scripts/content-client.mjs works enrich 12 /private/facts.json --expected-updated-at TIMESTAMP --apply
 ```
 
-`enrich` 只补空的 coverUrl、description、releaseDate、creators、aliases、platforms，不能修改身份、个人记录、文章关联或可见性；数组字段只在整个数组为空时填入，已有上传封面时跳过外部封面。至少一个带时间的 HTTPS 资料来源为必填；来源追加去重并保留旧行 ID。默认预览，写前复查版本并在 PATCH 后回读，重复运行没有新事实便不发 PATCH。原有值有误时仍用普通 update，有明确依据后更正。
+`enrich` 将补充结果保存为待发布草稿，公开旧版本不变。它只补空的 coverUrl、description、releaseDate、creators、aliases、platforms，不能修改身份、个人记录、文章关联或可见性；数组字段只在整个数组为空时填入，已有上传封面时跳过外部封面。至少一个带时间的 HTTPS 资料来源为必填；来源追加去重并保留旧行 ID。默认预览，写前复查版本并在 PATCH 后回读，重复运行没有新事实便不发 PATCH。原有值有误时仍用普通 update，有明确依据后更正。
 
 这是客户端辅助命令，联网、候选判断和图片检查由当前 Agent 完成。客户端不代替联网工具，不调用模型、不抓取任意 URL，不向资料站发送网站凭据；服务端继续只提供标准 CRUD。尚未核实的元数据留空，社区评分和作品发布日期不能替代个人评分与体验日期。外链可用性取决于源站，上传托管仍通过原后台完成。
 
@@ -109,4 +111,13 @@ node scripts/content-client.mjs works enrich 12 /private/facts.json --expected-u
 
 新迁移 `20261017_171808_content_clients` 仅新增身份表、索引及 Payload 内部关系表的可空关系列；不改 Users、Works 或 Posts 数据，不重新导入。自动部署仍拒绝未执行迁移，需先在生产副本验证和备份后手动迁移。down 拒绝删除身份，代码回退可保留新增表。
 
-旧 `library-agent.mjs`、旧专用接口和清单导入脚本保留兼容，但不再扩展为文章接口；旧 Bearer 令牌不能用于新客户端。唯一推荐 skill 是 homepage-content。安装时将该 skill 文件夹放入 AI 工具的技能目录，或在 Codex 中链接到 `~/.codex/skills/homepage-content`；skill 内的客户端不依赖仓库 node_modules，只需 Node。WSL 通过 Git 获取源文件，凭据单独安全配置。
+旧 `library-agent.mjs`、旧专用接口和清单导入脚本保留兼容，但不再扩展为文章接口；旧接口的作品读取改为最新草稿，新增／修改保存草稿，选择公开可见性也不会绕过发布动作。Markdown 导入脚本关联 Works 时同样只保存作品草稿。旧 Bearer 令牌不能用于新客户端。唯一推荐 skill 是 homepage-content。安装时将该 skill 文件夹放入 AI 工具的技能目录，或在 Codex 中链接到 `~/.codex/skills/homepage-content`；skill 内的客户端不依赖仓库 node_modules，只需 Node。WSL 通过 Git 获取源文件，凭据单独安全配置。
+
+
+## Works 原生草稿迁移（仅开发验证，尚未上线）
+
+`20261021_034349_works_drafts` 为 Works 开启与 Posts 相同的原生草稿／历史，每条最多 30 个版本；匿名版本接口拒绝访问。旧公开作品回填为 published，旧私密作品回填为 draft，原可见性与全部个人字段、ID、来源／体验行和文章关联保留。迁移创建初始版本与数组身份映射；必填字段的物理列放宽为可空以支持原生不完整草稿。
+
+本次迁移已在一次性合成旧库核对所有原表原字段值及关联，实际生产库未执行。迁移先检查专用连接可关闭外键级联，再把表替换、数据复制与版本初始化置于同一数据库事务中，完成后重新启用外键并核对完整性。若在已有事务中执行会在改变既有数据前拒绝，应使用普通迁移环境而非 `PAYLOAD_IMPORT_TRANSACTION=1` 的导入环境。down 拒绝删除用户草稿和历史。
+
+上线前仍需既有备份／真实副本复核和显式部署步骤；不要单独先替换发布器模板。静态 Works 构建读取显式 `draft=false` 并检查 public+published，文章关系沿用公开版本权限，避免草稿进入快照。源代码交付不代表既有服务已重启、生产迁移已执行或内容已发布。

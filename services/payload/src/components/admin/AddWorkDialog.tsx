@@ -53,7 +53,7 @@ export function AddWorkDialog({ status, works, onWork, onClose }: {
         detailMissing = details.state !== 'ok'
       } catch { detailMissing = true }
       const data = { ...metadataPatch(selected, {}), type, status, visibility: 'private' as const }
-      const duplicate = await tableRequest<{ docs: TableWork[] }>(`works?${new URLSearchParams({ 'where[slug][equals]': data.slug, depth: '0', limit: '1' })}`)
+      const duplicate = await tableRequest<{ docs: TableWork[] }>(`works?${new URLSearchParams({ 'where[slug][equals]': data.slug, depth: '0', limit: '1', draft: 'true' })}`)
       if (duplicate.docs.length) {
         const match = duplicate.docs[0]
         if (match.sources?.some(source => source.provider === candidate.provider && source.externalId === candidate.externalId)) { onWork(match); onClose(); return }
@@ -63,7 +63,7 @@ export function AddWorkDialog({ status, works, onWork, onClose }: {
         setMessage('来源详情暂时不可用，本次只收录搜索结果中的基础资料。')
       }
       creating = true
-      const saved = await tableRequest<{ doc: TableWork }>('works?depth=0', 'POST', data)
+      const saved = await tableRequest<{ doc: TableWork }>('works?depth=0&draft=true', 'POST', { ...data, _status: 'draft' })
       onWork(saved.doc); onClose()
     } catch (error) {
       if (creating) setUncertain(true)
@@ -74,7 +74,7 @@ export function AddWorkDialog({ status, works, onWork, onClose }: {
   return <>
     <dialog ref={dialog} className="works-table__dialog" onCancel={event => { event.preventDefault(); if (!busy) onClose() }}>
       <h2>{status === 'completed' ? '记录作品' : '加入待体验'}</h2>
-      <p>搜索外部作品资料；选择后保存为私密作品。已有作品会定位到原记录。</p>
+      <p>搜索外部作品资料；选择后保存为私密草稿。已有作品会定位到原记录。</p>
       <div className="works-table__toolbar">
         <select aria-label="新增作品类型" value={type} disabled={busy || uncertain} onChange={event => { setType(event.target.value as WorkType); setResult(undefined) }}>
           {workTypes.map(value => <option key={value} value={value}>{dictionaries.zh[value]}</option>)}
@@ -98,8 +98,8 @@ export function AddWorkDialog({ status, works, onWork, onClose }: {
         <button type="button" disabled={busy} onClick={onClose}>关闭</button>
       </div>
     </dialog>
-    <ManualDrawer redirectAfterCreate={false} redirectAfterDuplicate={false} initialData={{ title: query.trim(), type, status, visibility: 'private' }} onSave={async ({ doc }) => {
-      const saved = await tableRequest<TableWork>(`works/${doc.id}?depth=0`)
+    <ManualDrawer redirectAfterCreate={false} redirectAfterDuplicate={false} initialData={{ title: query.trim(), type, status, visibility: 'private', _status: 'draft' }} onSave={async ({ doc }) => {
+      const saved = await tableRequest<TableWork>(`works/${doc.id}?depth=0&draft=true`)
       onWork(saved); manual.closeDrawer(); onClose()
     }} />
   </>

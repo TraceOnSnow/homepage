@@ -61,7 +61,7 @@ test('restricted library capability performs SQLite CRUD without exposing Users 
     assert.equal(changed.body.note, 'User-owned note')
     assert.equal(changed.body.rating, 9)
     assert.equal(changed.body.sources[0].id, created.body.sources[0].id)
-    assert.equal((await payload.find({ collection: 'works', overrideAccess: false, user: null, where: { id: { equals: id } } })).totalDocs, 1)
+    assert.equal((await payload.find({ collection: 'works', overrideAccess: false, user: null, where: { id: { equals: id } } })).totalDocs, 0, 'legacy save stays a draft even when visibility is public')
     assert.equal((await call({ action: 'delete', id, expectedUpdatedAt: '2000-01-01T00:00:00Z' })).status, 409)
     const deleted = await call({ action: 'delete', id, expectedUpdatedAt: changed.body.updatedAt })
     assert.deepEqual(deleted, { status: 200, body: { deleted: true, id } })
