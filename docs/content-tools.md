@@ -52,7 +52,7 @@ node scripts/content-client.mjs posts unpublish 34 --apply
 
 体验时间沿用 `experiences[].startedOn/endedOn`，支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD` 或空；旧 ISO 时间戳保持兼容。通常只填写结束时间。进度、通关次数或备注统一写作品 `note`；旧体验记录的状态、平台、进度、备注不自动搬入公开短感受。更新数组时保留其他行、ID 和未修改的原始日期。后台批量整理入口为 `/admin/works-table`，见 [作品表格](works-table.md)。
 
-作品和文章的 list/get 默认读取最新草稿。create/import/update/enrich/link 保存草稿，不自动发布；公开旧版本在编辑期间继续展示。两类内容均使用独立 publish/unpublish：publish 发送最新草稿的全部可编辑字段及原有设置；unpublish 下架并保留最新未发布修改，delete 删除。作品的 visibility 与发布状态独立：只有 `_status: published` 且 `visibility: public` 才公开。publish 保留所选可见性，私密作品即使发布也不会展示；修改 visibility 后保存草稿不会改变公开旧版本。删除关联文章后 Payload 的现有外键把作品关联置空，原短感受保留。
+作品和文章的 list/get 默认读取最新草稿。create/import/update/enrich/link 保存草稿，不自动发布；公开旧版本在编辑期间继续展示。两类内容均使用独立 publish/unpublish：publish 发送最新草稿的全部可编辑字段及原有设置；unpublish 下架并保留最新未发布修改，delete 移入原生回收站并保留版本；恢复后保持草稿，重新公开需要明确发布。作品的 visibility 与发布状态独立：只有 `_status: published` 且 `visibility: public` 才公开。publish 保留所选可见性，私密作品即使发布也不会展示；修改 visibility 后保存草稿不会改变公开旧版本。关联文章移入回收站后保留原关联 ID 和短感受，公开读取不展示已删除文章；恢复沿用原身份。
 
 更新可附 `--expected-updated-at`，按审阅时的版本执行；客户端复查，标准批量 PATCH/DELETE 用 ID 和更新时间筛选并检查恰好一条成功。草稿与公开文档时间不同，因此发布／删除使用公开基表的筛选，同时复查最新草稿。这里不是跨管理员编辑的原子 CAS，发生冲突须读取核对；写入超时不得盲目重试创建。部分更新不发送未改字段；数组修改应保留原行 ID。
 

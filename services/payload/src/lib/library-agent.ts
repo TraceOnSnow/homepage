@@ -149,15 +149,18 @@ export const libraryAgentEndpoint: Endpoint = {
         const patch = action === 'update' ? data(input.data) : undefined
         result = await mutate(async () => {
           let baseline = version
+          let deletionData = {}
           if (action === 'delete') {
             const latest = await payload.findByID({ collection: 'works', id, draft: true, depth: 0 })
             if (latest.updatedAt !== version) throw new InputError('Work changed; read it again', 409)
-            baseline = (await payload.findByID({ collection: 'works', id, draft: false, depth: 0 })).updatedAt
+            // Native bulk Trash matches latest draft versions, even with draft:false.
+            baseline = latest.updatedAt
+            deletionData = { ...latest, deletedAt: new Date().toISOString() }
           }
           const where: Where = { and: [{ id: { equals: id } }, { updatedAt: { equals: baseline } }] }
           const changed = action === 'update'
             ? await payload.update({ collection: 'works', overrideAccess: true, draft: true, depth: 0, where, limit: 1, data: { ...patch!, _status: 'draft' } })
-            : await payload.delete({ collection: 'works', overrideAccess: true, depth: 0, where })
+            : await payload.update({ collection: 'works', overrideAccess: true, draft: false, depth: 0, where, limit: 1, data: deletionData })
           if (changed.errors.length) throw new InputError('Work validation failed', 422)
           if (changed.docs.length !== 1) throw new InputError('Work changed or no longer exists; read it again', 409)
           return action === 'update' ? changed.docs[0] : { deleted: true, id }

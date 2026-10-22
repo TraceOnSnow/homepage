@@ -1,3 +1,4 @@
+import { preserveContentHistory, restoreAsDraft } from './lifecycle'
 import { dictionaries } from '@/lib/ui/dictionary'
 import type { CollectionConfig, Where } from 'payload'
 import { cover, httpURL, slug, tags, writes } from './shared'
@@ -12,6 +13,7 @@ export const Works: CollectionConfig = {
   labels: { singular: {zh: '作品', en: 'Works'}, plural: {zh: '作品', en: 'Works'} },
   slug: 'works', admin: { useAsTitle: 'title', defaultColumns: ['title', 'type', 'rating', 'status', '_status'] },
   versions: { drafts: true, maxPerDoc: 30 },
+  trash: true,
   access: {
     ...writes,
     read: ({ req }): true | Where => req.user ? true : { and: [
@@ -19,6 +21,7 @@ export const Works: CollectionConfig = {
     ] },
     readVersions: ({ req }) => Boolean(req.user),
   },
+  hooks: { beforeChange: [restoreAsDraft], beforeDelete: [preserveContentHistory] },
   fields: [
     { name: 'type', label: {zh: '类型', en: 'Type'}, type: 'select', required: true, defaultValue: 'game', options: workTypes.map(value => ({ value, label: { zh: dictionaries.zh[value], en: dictionaries.en[value] } })) },
     { name: 'metadataSearch', type: 'ui', admin: {

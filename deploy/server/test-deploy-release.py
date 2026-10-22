@@ -146,6 +146,24 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'draft privacy'):
             deployer.check_release_compatibility(self.database, {'001_initial': 'source'})
 
+    def test_physical_trash_schema_blocks_old_release_without_bookkeeping(self):
+        self.migrated_works()
+        with sqlite3.connect(self.database) as db:
+            db.execute('ALTER TABLE works ADD COLUMN deleted_at TEXT')
+            db.execute("UPDATE works SET deleted_at = '2026-01-01T00:00:00Z'")
+        target = {'001_initial': 'source', deployer.WORKS_DRAFT_MIGRATION: 'source'}
+        with self.assertRaisesRegex(ValueError, 'trashed content'):
+            deployer.check_release_compatibility(self.database, target)
+        target[deployer.CONTENT_TRASH_MIGRATION] = 'source'
+        deployer.check_release_compatibility(self.database, target)
+
+    def test_trash_migration_record_blocks_old_release_even_without_columns(self):
+        self.migrated_works()
+        with sqlite3.connect(self.database) as db:
+            db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (deployer.CONTENT_TRASH_MIGRATION,))
+        with self.assertRaisesRegex(ValueError, 'trashed content'):
+            deployer.check_release_compatibility(self.database, {'001_initial': 'source', deployer.WORKS_DRAFT_MIGRATION: 'source'})
+
     def test_failed_upgrade_keeps_compatible_app_and_blocks_legacy_rollback(self):
         self.migrated_works()
         def fail():

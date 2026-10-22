@@ -387,10 +387,11 @@ export async function runCLI(argv, request) {
     await request('GET', 'posts', { id: postID, query: latestQuery('posts') });
     data = { article: postID };
   }
-  if (['publish', 'unpublish'].includes(action)) {
+  if (['publish', 'unpublish', 'delete'].includes(action)) {
     const fields = resource === 'works' ? workFields : postFields;
     data = Object.fromEntries(fields.filter((key) => current[key] !== undefined).map((key) => [key, current[key]]));
-    data._status = action === 'publish' ? 'published' : 'draft';
+    data._status = action === 'delete' ? current._status : action === 'publish' ? 'published' : 'draft';
+    if (action === 'delete') data.deletedAt = new Date().toISOString();
   }
   // Editing saves a separate draft; visibility and publication are independent choices.
   const saveDraft = ['update', 'enrich', 'link'].includes(action);
@@ -405,15 +406,21 @@ export async function runCLI(argv, request) {
   };
   if (!options.get('apply')) return { dryRun: true, ...preview };
   // Non-draft bulk operations match the base document; drafts have their own timestamps.
-  const baseline = !saveDraft ? await request('GET', resource, { id }) : current;
+  const baseline = !saveDraft && action !== 'delete' ? await request('GET', resource, { id }) : current;
   const refreshed = await request('GET', resource, { id, query: latestQuery(resource) });
   if (refreshed.updatedAt !== expected) throw Error('Content changed since review; read it again');
-  const result = await request(action === 'delete' ? 'DELETE' : 'PATCH', resource, {
+  if (action === 'delete' && !Object.hasOwn(refreshed, 'deletedAt')) throw Error('Native Trash is unavailable; upgrade the backend before deletion');
+  const result = await request('PATCH', resource, {
     query: { ...conditions(id, baseline.updatedAt), ...(saveDraft ? { draft: 'true' } : {}) },
     ...(data ? { data } : {}),
   });
   if (result.errors?.length) throw Error('Payload rejected the content change; read it again before retrying');
   if (!Array.isArray(result.docs) || result.docs.length !== 1) throw Error('Content changed or disappeared; read it again');
+  if (action === 'delete') {
+    const retained = await request('GET', resource, { id, query: { draft: 'true', trash: 'true' } });
+    if (!retained.deletedAt || String(retained.id) !== String(id)) throw Error('Trash readback mismatch; inspect retained content before retrying');
+    return retained;
+  }
   if (enrichment) {
     const verified = await request('GET', resource, { id, query: latestQuery(resource) });
     if (

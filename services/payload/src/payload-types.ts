@@ -235,6 +235,7 @@ export interface Work {
   visibility: 'public' | 'private';
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -284,6 +285,7 @@ export interface Post {
   protectedContent?: boolean | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -496,6 +498,7 @@ export interface WorksSelect<T extends boolean = true> {
   visibility?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -548,6 +551,7 @@ export interface PostsSelect<T extends boolean = true> {
   protectedContent?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**

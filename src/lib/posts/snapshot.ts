@@ -16,6 +16,7 @@ export const postSchema = z.object({
   frontmatter: z.record(z.unknown()).nullish(),
   cover: z.union([z.number(), z.object({ url: z.string().nullish() })]).nullish(),
   _status: z.literal('published'),
+  deletedAt: z.null().optional(),
 });
 export type PublishedPost = z.infer<typeof postSchema>;
 

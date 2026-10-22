@@ -64,7 +64,7 @@ node scripts/content-client.mjs works link 12 34 --apply
 
 创建 JSON 至少包含 `title` 和稳定 `link`（例如 `note/game-review`），语言默认 zh；可包含 Markdown、摘要、分类、标签、封面 ID、发布日期和其他主题选项。正文可直接读取 UTF-8 Markdown 文件，保留原语法，不转换为富文本。
 
-创建及修改默认保存草稿。只有用户要求发布时执行 `posts publish ID`，它会发布最新草稿，而非旧公开正文。`posts unpublish ID` 是下架，`posts delete ID` 是删除，两者不同。修改标题不擅自修改固定链接、发布日期、语言和其他设置。
+创建及修改默认保存草稿。只有用户要求发布时执行 `posts publish ID`，它会发布最新草稿，而非旧公开正文。`posts unpublish ID` 是下架，`posts delete ID` 是移入原生回收站并保留ID、版本和作品关联，两者不同。后台Restore恢复为草稿，重新公开仍需明确发布；裸DELETE永久删除被拒绝。修改标题不擅自修改固定链接、发布日期、语言和其他设置。
 
 作品关联文章用 `works link WORK_ID POST_ID`，不改写原短感受；短感受为空时前台自动使用文章标题。当前工具可引用已有封面 ID，不能上传图片。
 

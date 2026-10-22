@@ -47,7 +47,8 @@ export function publicLibraryWork(input: unknown, base: string): LibraryWork | u
     !('visibility' in input) ||
     input.visibility !== 'public' ||
     !('_status' in input) ||
-    input._status !== 'published'
+    input._status !== 'published' ||
+    ('deletedAt' in input && Boolean(input.deletedAt))
   )
     return undefined;
   const result = workSchema.safeParse(input);

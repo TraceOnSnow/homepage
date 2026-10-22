@@ -75,10 +75,12 @@ test('update and delete require a single ID and version, then constrain their Wh
   assert.equal((await call({ action: 'delete', id: 2 }, payload)).status, 400)
   assert.equal((await call({ action: 'update', id: 2, expectedUpdatedAt: version, data: { note: 'Changed' } }, payload)).body.note, 'Changed')
   assert.deepEqual((await call({ action: 'delete', id: '2', expectedUpdatedAt: version }, payload)).body, { deleted: true, id: 2 })
+  assert.equal(requests[1].draft, false)
+  assert.ok((requests[1].data as { deletedAt: string }).deletedAt)
   assert.equal(requests[0].draft, true)
   assert.deepEqual(requests[0].data, { note: 'Changed', _status: 'draft' })
   for (const request of requests) assert.deepEqual(request.where, { and: [{ id: { equals: 2 } }, { updatedAt: { equals: version } }] })
-  assert.equal((await call({ action: 'delete', id: 2, expectedUpdatedAt: version }, { findByID: async () => ({ updatedAt: version }), delete: async () => ({ docs: [], errors: [] }) })).status, 409)
+  assert.equal((await call({ action: 'delete', id: 2, expectedUpdatedAt: version }, { findByID: async () => ({ updatedAt: version }), update: async () => ({ docs: [], errors: [] }) })).status, 409)
   assert.equal((await call({ action: 'update', id: 2, expectedUpdatedAt: version, data: { rating: 20 } }, { update: async () => ({ docs: [], errors: [{ message: 'private internal error' }] }) })).status, 422)
 })
 

@@ -1,3 +1,4 @@
+import * as migration_20261022_050000_content_trash from './20261022_050000_content_trash';
 import * as migration_20260929_234416_initial from './20260929_234416_initial';
 import * as migration_20260930_000715_native_slug from './20260930_000715_native_slug';
 import * as migration_20261015_211157_markdown_posts from './20261015_211157_markdown_posts';
@@ -30,4 +31,5 @@ export const migrations = [
     down: migration_20261021_034349_works_drafts.down,
     name: '20261021_034349_works_drafts'
   },
+  { up: migration_20261022_050000_content_trash.up, down: migration_20261022_050000_content_trash.down, name: '20261022_050000_content_trash' },
 ];

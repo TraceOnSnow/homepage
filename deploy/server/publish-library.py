@@ -59,7 +59,7 @@ def read_works():
         if not isinstance(data.get('docs'), list) or not isinstance(data.get('hasNextPage'), bool):
             raise ValueError('Unexpected Works API response; keeping existing site')
         for doc in data['docs']:
-            if doc.get('visibility') != 'public' or doc.get('_status') != 'published':
+            if doc.get('visibility') != 'public' or doc.get('_status') != 'published' or doc.get('deletedAt'):
                 raise ValueError('Unexpected nonpublic API document; keeping existing site')
             docs.append(doc)
         if not data['hasNextPage']:
@@ -87,7 +87,7 @@ def read_content():
             if not isinstance(data.get('docs'), list) or not isinstance(data.get('hasNextPage'), bool):
                 raise ValueError('Invalid article snapshot; keeping existing site')
             for post in data['docs']:
-                if post.get('_status') != 'published':
+                if post.get('_status') != 'published' or post.get('deletedAt'):
                     raise ValueError('Unpublished article in build snapshot')
                 posts.append(post)
             if not data['hasNextPage']:

@@ -1,3 +1,4 @@
+import { preserveContentHistory, restoreAsDraft } from './lifecycle'
 import type { CollectionConfig, Where } from 'payload'
 import { cover, tags, writes } from './shared'
 import { slugify } from '../lib/slug'
@@ -7,6 +8,7 @@ export const Posts: CollectionConfig = {
   labels: { singular: { zh: '文章', en: 'Post' }, plural: { zh: '文章', en: 'Posts' } },
   admin: { useAsTitle: 'title', defaultColumns: ['title', 'locale', '_status', 'publishedAt'] },
   versions: { drafts: true, maxPerDoc: 30 },
+  trash: true,
   indexes: [{ fields: ['locale', 'link'], unique: true }],
   access: {
     ...writes,
@@ -15,7 +17,7 @@ export const Posts: CollectionConfig = {
     ] },
     readVersions: ({ req }) => Boolean(req.user),
   },
-  hooks: { beforeValidate: [({ data, originalDoc }) => {
+  hooks: { beforeChange: [restoreAsDraft], beforeDelete: [preserveContentHistory], beforeValidate: [({ data, originalDoc }) => {
     if (!data) return data
     data.link ||= originalDoc?.link || slugify(data.title || '')
     data.publishedAt ||= originalDoc?.publishedAt || new Date().toISOString()

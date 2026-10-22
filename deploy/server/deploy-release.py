@@ -18,6 +18,7 @@ BASE = Path(__file__).resolve().parent
 MIGRATIONS = 'services/payload/src/migrations'
 IMAGE_PATTERN = r'ghcr\.io/traceonsnow/homepage-payload@sha256:[0-9a-f]{64}'
 WORKS_DRAFT_MIGRATION = '20261021_034349_works_drafts'
+CONTENT_TRASH_MIGRATION = '20261022_050000_content_trash'
 
 
 def validate_release(commit, image):
@@ -71,7 +72,13 @@ def check_release_compatibility(database, target):
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
         applied = {row[0] for row in connection.execute('SELECT name FROM payload_migrations')}
         columns = {row[1] for row in connection.execute('PRAGMA table_info(works)')}
+        trash_schema = any(
+            column in {row[1] for row in connection.execute(f'PRAGMA table_info({table})')}
+            for table, column in [('works', 'deleted_at'), ('cms_posts', 'deleted_at'),
+                                  ('_works_v', 'version_deleted_at'), ('_cms_posts_v', 'version_deleted_at')])
         versions = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='_works_v'").fetchone()
+    if (CONTENT_TRASH_MIGRATION in applied or trash_schema) and CONTENT_TRASH_MIGRATION not in target:
+        raise ValueError('Legacy release would expose trashed content; retain the schema and use a reviewed Trash-compatible release')
     if (WORKS_DRAFT_MIGRATION in applied or '_status' in columns or versions) and WORKS_DRAFT_MIGRATION not in target:
         raise ValueError('Legacy release would bypass Work draft privacy; retain the schema and use a reviewed draft-compatible release')
 
@@ -237,8 +244,8 @@ class Deployment:
                     check_release_compatibility(database, previous)
                 except Exception as compatibility_error:
                     # Do not restore an old image, checkout or publisher after
-                    # Works drafts exist: its visibility-only read boundary can
-                    # expose unpublished drafts. Keep a healthy candidate; when
+                    # Draft or Trash data exists: a legacy read boundary can
+                    # expose unpublished or deleted content. Keep a healthy candidate; when
                     # startup did not finish, stop the possibly legacy service.
                     errors = [str(compatibility_error)]
                     if not application_ready:

@@ -16,7 +16,7 @@ test('Works drafts upgrade preserves every old table row, array ID, relation and
   const snapshot = `import sqlite3,sys,json
 c=sqlite3.connect(sys.argv[1]);out={}
 for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_works_v%' AND name != 'payload_migrations' ORDER BY name"):
- cols=sorted(r[1] for r in c.execute('PRAGMA table_info("'+name+'")') if not (name=='works' and r[1]=='_status'))
+ cols=sorted(r[1] for r in c.execute('PRAGMA table_info("'+name+'")') if not (name=='works' and r[1]=='_status') and not r[1].endswith('deleted_at'))
  out[name]=sorted(c.execute('SELECT '+','.join('"'+v+'"' for v in cols)+' FROM "'+name+'"').fetchall(),key=repr)
 print(json.dumps(out,ensure_ascii=False,sort_keys=True))`
   try {
@@ -24,7 +24,9 @@ print(json.dumps(out,ensure_ascii=False,sort_keys=True))`
     const { default: config } = await import('../../src/payload.config')
     const { migrations } = await import('../../src/migrations')
     payload = await getPayload({ config })
-    await payload.db.migrate({ migrations: migrations.slice(0, -1).map(migration => ({ name: migration.name, up: args => migration.up(args as MigrateUpArgs), down: args => migration.down(args as MigrateDownArgs) })) })
+    const draftIndex = migrations.findIndex(migration => migration.name === '20261021_034349_works_drafts')
+    const draftMigration = migrations[draftIndex]
+    await payload.db.migrate({ migrations: migrations.slice(0, draftIndex).map(migration => ({ name: migration.name, up: args => migration.up(args as MigrateUpArgs), down: args => migration.down(args as MigrateDownArgs) })) })
     python(`import sqlite3,sys,json
 c=sqlite3.connect(sys.argv[1]);c.execute('PRAGMA foreign_keys=ON')
 c.execute("INSERT INTO works(id,type,title,slug,rating,status,note,visibility,created_at,updated_at) VALUES (41,'game','公开历史','public-legacy',0,'completed','原感受','public','2020-01-01T00:00:00Z','2020-02-01T00:00:00Z')")
@@ -65,7 +67,7 @@ c.commit();print('null')`)
       const value = Reflect.get(target, property)
       return typeof value === 'function' ? value.bind(target) : value
     } })
-    await assert.rejects(migrations.at(-1)!.up({ db: interrupted } as MigrateUpArgs), /Injected failure/)
+    await assert.rejects(draftMigration.up({ db: interrupted } as MigrateUpArgs), /Injected failure/)
     assert.equal(failureInjected, true)
     assert.deepEqual(python(snapshot), before, 'interrupted replacement must roll back every existing row')
     assert.equal(python("import sqlite3,sys,json;c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute(\"SELECT count(*) FROM sqlite_master WHERE type='table' AND name LIKE '_works_v%'\").fetchone()[0]))"), 0)
@@ -111,11 +113,11 @@ c.commit();print('null')`)
     assert.deepEqual(python("import sqlite3,sys,json;c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute('PRAGMA foreign_key_check').fetchall()))"), [])
     const db = payload.db as unknown as SQLiteAdapter
     const { generateDrizzleJson, generateMigration } = db.requireDrizzleKit()
-    const schema = JSON.parse(await readFile(new URL('../../src/migrations/20261021_034349_works_drafts.json', import.meta.url), 'utf8'))
+    const schema = JSON.parse(await readFile(new URL('../../src/migrations/20261022_050000_content_trash.json', import.meta.url), 'utf8'))
     assert.deepEqual(await generateMigration(schema, await generateDrizzleJson(db.schema)), [])
     const beforeRepeat = python(snapshot)
     await payload.db.migrate()
     assert.deepEqual(python(snapshot), beforeRepeat, 'repeat migration is a no-op for all data, including synthetic API identities')
-    await assert.rejects(migrations.at(-1)!.down({} as never), /Preserve Work drafts/)
+    await assert.rejects(draftMigration.down({} as never), /Preserve Work drafts/)
   } finally { await payload?.destroy(); await rm(directory, { recursive: true, force: true }) }
 })

@@ -16,7 +16,7 @@ export const contentEndpoint: Endpoint = {
     const page = Number(params.get('page') || 1)
     if (!Number.isSafeInteger(page) || page < 1) return Response.json({ error: 'Invalid page' }, { status: 400 })
     const posts = await req.payload.find({ collection: 'posts', overrideAccess: true, draft: false,
-      where: { _status: { equals: 'published' } }, page, limit: 100, depth: 1, sort: 'id' })
+      where: { and: [{ _status: { equals: 'published' } }, { deletedAt: { exists: false } }] }, page, limit: 100, depth: 1, sort: 'id' })
     return Response.json(posts, { headers: { 'Cache-Control': 'private, no-store' } })
   },
 }

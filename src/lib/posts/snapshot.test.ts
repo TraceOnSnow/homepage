@@ -38,6 +38,7 @@ test('snapshot validates status, pagination and auth; API failure cannot replace
   await syncPosts({ ...options, posts: [post] });
   const before = await readFile(path.join(options.directory, 'note/review.md'), 'utf8');
   await assert.rejects(syncPosts({ ...options, posts: [{ ...post, _status: 'draft' }] }));
+  await assert.rejects(syncPosts({ ...options, posts: [{ ...post, deletedAt: '2026-01-01T00:00:00Z' }] }));
   assert.equal(await readFile(path.join(options.directory, 'note/review.md'), 'utf8'), before);
   const pages = await fetchPostSnapshot(options.base, options.token, async (_url, init) => {
     assert.equal((init?.headers as { Authorization: string }).Authorization, `Bearer ${options.token}`);
