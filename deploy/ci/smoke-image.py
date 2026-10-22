@@ -35,7 +35,7 @@ try {
   await payload.create({collection:'users',data:{email:'ci@example.test',password:'disposable-ci-password-123'}});
   const data = await sharp({create:{width:40,height:40,channels:3,background:'#557799'}}).png().toBuffer();
   const media = await payload.create({collection:'media',data:{alt:'CI cover'},file:{data,mimetype:'image/png',name:'ci.png',size:data.length}});
-  await payload.create({collection:'works',data:{title:'Container persistence',slug:'ci-persistence',type:'game',rating:0,note:'Keep my note',visibility:'public',cover:media.id}});
+  await payload.create({collection:'works',data:{title:'Container persistence',slug:'ci-persistence',type:'game',rating:0,note:'Keep my note',visibility:'public',_status:'published',cover:media.id}});
 } finally {await payload.destroy();}
 """
         docker('run', '--rm', '-i', '-v', volume + ':/app/storage', *env, image,
