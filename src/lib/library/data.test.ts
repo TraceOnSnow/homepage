@@ -27,7 +27,10 @@ test('Payload uses one selected article with language fallback and never revives
 test('Library exports only public display fields and personal ratings, preserving a zero rating', () => {
   assert.equal(publicLibraryWork({ ...work, visibility: 'private', note: 'private note' }, base), undefined);
   assert.equal(publicLibraryWork({ ...work, _status: 'draft', note: 'unpublished draft' }, base), undefined);
-  assert.equal(publicLibraryWork({ ...work, deletedAt: '2026-01-01T00:00:00Z', note: 'trashed public version' }, base), undefined);
+  assert.equal(
+    publicLibraryWork({ ...work, deletedAt: '2026-01-01T00:00:00Z', note: 'trashed public version' }, base),
+    undefined,
+  );
   assert.equal(publicLibraryWork({ ...work, _status: undefined }, base), undefined);
   const displayed = requireWork(
     {

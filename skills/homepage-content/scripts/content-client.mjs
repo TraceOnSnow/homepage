@@ -409,7 +409,8 @@ export async function runCLI(argv, request) {
   const baseline = !saveDraft && action !== 'delete' ? await request('GET', resource, { id }) : current;
   const refreshed = await request('GET', resource, { id, query: latestQuery(resource) });
   if (refreshed.updatedAt !== expected) throw Error('Content changed since review; read it again');
-  if (action === 'delete' && !Object.hasOwn(refreshed, 'deletedAt')) throw Error('Native Trash is unavailable; upgrade the backend before deletion');
+  if (action === 'delete' && !Object.hasOwn(refreshed, 'deletedAt'))
+    throw Error('Native Trash is unavailable; upgrade the backend before deletion');
   const result = await request('PATCH', resource, {
     query: { ...conditions(id, baseline.updatedAt), ...(saveDraft ? { draft: 'true' } : {}) },
     ...(data ? { data } : {}),
@@ -418,7 +419,8 @@ export async function runCLI(argv, request) {
   if (!Array.isArray(result.docs) || result.docs.length !== 1) throw Error('Content changed or disappeared; read it again');
   if (action === 'delete') {
     const retained = await request('GET', resource, { id, query: { draft: 'true', trash: 'true' } });
-    if (!retained.deletedAt || String(retained.id) !== String(id)) throw Error('Trash readback mismatch; inspect retained content before retrying');
+    if (!retained.deletedAt || String(retained.id) !== String(id))
+      throw Error('Trash readback mismatch; inspect retained content before retrying');
     return retained;
   }
   if (enrichment) {
