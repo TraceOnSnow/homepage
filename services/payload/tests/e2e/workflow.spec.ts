@@ -140,11 +140,19 @@ test('admin searches all eight providers, saves Works, and exposes only public a
   await page.getByRole('button', { name: '保存草稿', exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/collections\/posts\/\d+$/)
   const postID = page.url().split('/').at(-1)!
-  const publicClient = await playwright.request.newContext()
+  // Keep the anonymous publication checks independent of a previously reused
+  // HTTP/1.1 socket (CI traced an unfinished GET after the initial draft 404).
+  const publicClient = await playwright.request.newContext({ extraHTTPHeaders: { Connection: 'close' } })
   try {
     expect((await publicClient.get('/api/content/posts')).status()).toBe(401)
     expect((await publicClient.get(`/api/posts/${postID}`)).status()).toBe(404)
+    const postPublished = page.waitForResponse(response => new URL(response.url()).pathname === `/api/posts/${postID}`
+      && response.request().method() === 'PATCH')
     await page.getByRole('button', { name: /^发布(?:修改)?$/ }).click()
+    const publishedResponse = await postPublished
+    expect(publishedResponse.ok()).toBe(true)
+    expect((await publishedResponse.json()).doc._status).toBe('published')
+    await expect(page.getByRole('button', { name: '保存草稿', exact: true })).toBeDisabled()
     await expect.poll(async () => (await publicClient.get(`/api/posts/${postID}`)).status()).toBe(200)
     const published = await (await publicClient.get(`/api/posts/${postID}`)).json()
     expect(published.link).toBe('browser-markdown-article')
