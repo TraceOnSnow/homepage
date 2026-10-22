@@ -111,5 +111,5 @@ test('Works table protects hidden edits, reports partial saves, supports keyboar
   if (await openMenu.isVisible()) await openMenu.click()
   page.once('dialog', dialog => dialog.accept())
   await postsLink.click()
-  await expect(page).toHaveURL(/\/admin\/collections\/posts$/)
+  await expect(page).toHaveURL(url => url.pathname === '/admin/collections/posts')
 })
