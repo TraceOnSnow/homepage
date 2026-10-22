@@ -17,6 +17,7 @@ export const Works: CollectionConfig = {
   access: {
     ...writes,
     read: ({ req }): true | Where => req.user ? true : { and: [
+      { deletedAt: { exists: false } },
       { _status: { equals: 'published' } }, { visibility: { equals: 'public' } },
     ] },
     readVersions: ({ req }) => Boolean(req.user),

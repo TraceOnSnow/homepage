@@ -13,6 +13,7 @@ export const Posts: CollectionConfig = {
   access: {
     ...writes,
     read: ({ req }): true | Where => req.user ? true : { and: [
+      { deletedAt: { exists: false } },
       { _status: { equals: 'published' } }, { protectedContent: { equals: false } },
     ] },
     readVersions: ({ req }) => Boolean(req.user),

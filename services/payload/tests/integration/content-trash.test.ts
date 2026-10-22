@@ -29,6 +29,12 @@ test('native Trash retains IDs, private edits and history; restore remains draft
       const trashedResponse = await request(`${collection}?${trashQuery}`, 'PATCH', { deletedAt: new Date().toISOString() })
       assert.equal(trashedResponse.status, 200, await trashedResponse.clone().text())
       assert.equal((await request(`${collection}/${item.id}`, 'GET', undefined, false)).status, 404)
+      for (const draft of [true, false]) {
+        assert.equal((await request(`${collection}/${item.id}?trash=true&draft=${draft}`, 'GET', undefined, false)).status, 404)
+        const explicitTrashList = await (await request(`${collection}?trash=true&draft=${draft}&depth=0`, 'GET', undefined, false)).json()
+        assert.ok(!explicitTrashList.docs.some((doc: { id: number }) => doc.id === item.id))
+        assert.ok([401, 403].includes((await request(`${collection}/versions?trash=true&draft=${draft}`, 'GET', undefined, false)).status))
+      }
       const publicList = await (await request(`${collection}?draft=false&depth=0`, 'GET', undefined, false)).json()
       assert.ok(!publicList.docs.some((doc: { id: number }) => doc.id === item.id))
       if (collection === 'posts') {
