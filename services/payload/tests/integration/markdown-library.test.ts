@@ -130,7 +130,7 @@ assert len(client.list_collection('works')) == 1
 assert library.get(work['id'])['id'] == work['id']
 assert len(public('posts')) == 1
 
-# Confirmed local deletion withdraws automatically while retaining both systems.
+# Confirmed local deletion enters native Trash while retaining both systems.
 restored = library.get(work['id'])
 library.publish(work['id'], expected_hash=restored['sha256'])
 republished = sync_once(library, client, apply=True, works_drafts_and_versions=True)
@@ -139,10 +139,18 @@ assert len(public('works')) == 1
 deleted = library.delete(work['id'], expected_hash=restored['sha256'])
 deleted_sync = sync_once(library, client, apply=True, works_drafts_and_versions=True)
 assert not deleted_sync['pending_ids'], deleted_sync
-assert public('works') == [] and len(client.list_collection('works')) == 1
+assert any(row['status'] == 'deleted-observed' for row in deleted_sync['results']), deleted_sync
+assert public('works') == [] and client.list_collection('works') == []
+retained = client.list_collection('works', trash=True)
+assert len(retained) == 1 and retained[0]['deletedAt']
+assert retained[0]['id'] == remote_work['id']
 recovered = library.recover(work['id'], expected_hash=deleted['sha256'])
 assert recovered['id'] == work['id'] and '这段私人体验正文' in recovered['markdown']
 assert library.publication(work['id']) is None
+restore_sync = sync_once(library, client, apply=True, works_drafts_and_versions=True)
+assert any(row['status'] == 'restored-draft-observed' for row in restore_sync['results']), restore_sync
+assert public('works') == [] and len(client.list_collection('works')) == 1
+assert client.get('works', remote_work['id'])['_status'] == 'draft'
 print(json.dumps({'status': 'passed', 'checks': ['real-rest-create', 'work-private-body',
     'partial-date-and-zero-rating', 'draft-does-not-publish', 'explicit-update',
     'linked-library-id', 'admin-draft-roundtrip', 'confirmed-delete-withdrawal',
