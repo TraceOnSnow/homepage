@@ -33,10 +33,13 @@
 2026-10-20（America/Chicago），根据 Steam 游玩名单导入时绕开现有资料接口的实际偏差，小幅修订 `homepage-content`：明确先查重并使用现有 `metadata search/details`，大名单先用少量名称确认接口返回；已返回的封面直接复用，仅失败、缺失或歧义条目走联网补查，不为整份名单另建来源匹配流程。原 Skill 已要求使用资料接口，本次修订是加强执行边界，不是新增内容 API。
 
 仅修改 Skill 文档及本记录，`quick_validate.py` 和 `git diff --check` 通过。服务器已安装 Skill 链接到仓库此目录，后续重新读取即使用修订内容；没有更新应用镜像或运行服务，没有写入本次 Steam 游戏，也未提交或推送本轮文档改动。
+## 最新：个人主页 README 与仓库简介
+
+根 README 更新为个人主页入口与现行使用说明，修正旧 Skill 链接、服务器尚未启用 Payload 等过期描述，保留 Koharu 署名与 AGPL-3.0 许可。GitHub 仓库 Description 与主页链接同步个人网站介绍。23 个 Markdown 链接中的本地目标均存在，Git 空白检查通过；本轮仅文档和仓库元数据变更，不重新部署网站。
 
 ## 最新：联网补资料与版本确认后续
 
-按用户确认通过标准 API 新增 16 条私密作品，总数 119 → 135，JOJO 两个指定电视版本均为进行中。七本书通过当前 Agent 联网核对来源后补齐空白封面及资料；原评分、感想、体验日期和关联不变，重复执行零写入。客户端新增只填空值的 `works enrich`，同步 skill 与防盗链图片修复；代码仍由 `feat/content-batch-import` 独立分支交付，未切换线上或已安装 skill。内容工具 26 项测试、Biome 和 skill 校验通过；详情见[联网补资料记录](operations/content-enrichment-acceptance.md)。
+按用户确认通过标准 API 新增 16 条私密作品，总数 119 → 135，JOJO 两个指定电视版本均为进行中。七本书通过当前 Agent 联网核对来源后补齐空白封面及资料；原评分、感想、体验日期和关联不变，重复执行零写入。客户端新增只填空值的 `works enrich`，同步 skill 与防盗链图片修复；后续已合并 `main` 并上线提交 `bcedc1cbe64024d7ed3920cf8fa2cdfd270318ac`；完整 CI `39344614940` 与自动部署 `39345286722` 均成功，已安装 skill 随正式 checkout 更新。部署前后 135 条作品、18 篇文章完整 API 快照一致；首页、清单、后台入口与公开 API 正常。内容工具 26 项测试、Biome 和 skill 校验通过；详情见[联网补资料记录](operations/content-enrichment-acceptance.md)。
 
 ## 最新：实际批量收录与统一工具迭代
 

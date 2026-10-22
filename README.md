@@ -1,21 +1,58 @@
 # TraceOnSnow
 
-现有线上部署源码见 [服务器部署](deploy/server/README.md)，推送检查与手动上线见 [CI/CD](docs/ci-cd.md)；后续在 WSL 开发、服务器仅部署，已实现与待办范围见 [开发交接](docs/development-handoff.md)。
+我的个人主页，记录技术学习、软件项目、作品体验和生活随笔。
 
-以 [Astro Koharu](https://github.com/cosZone/astro-koharu) 为基础的个人网站，统一域名为 `https://traceonsnow.com`。
+**[访问网站 → traceonsnow.com](https://traceonsnow.com)** · [关于我](https://traceonsnow.com/about) · [GitHub](https://github.com/TraceOnSnow)
+
+## 网站里有什么
+
+- **文章**：技术笔记、学习记录和个人随笔，使用 Markdown 写作。
+- **项目**：自己做过的软件和工具，以及相关的开发记录。
+- **体验清单（Library）**：记录游戏、书籍、电影、剧集、动画、漫画和桌游的体验状态、个人评分与体验日期。
+- **感想与长评**：作品卡片可以展示短感受，也可以关联一篇文章，继续展开记录。
+- **站内搜索**：通过 Pagefind 搜索已发布的内容。
+
+## 技术与内容管理
+
+网站基于 [Astro Koharu](https://github.com/cosZone/astro-koharu)，由 Astro 构建静态页面，Nginx 托管。Payload 提供统一的文章、作品和媒体后台，SQLite 数据库与上传文件独立持久化。
+
+文章在 Payload Posts 中保存原始 Markdown，支持草稿、发布和编辑，继续由 Astro 渲染。Library 在构建时读取公开作品，默认按个人体验结束时间排序，未填写时按添加时间排序。资料来源只用于补充作品的事实信息，个人评分、感想和体验日期由自己记录。
+
+AI 和普通脚本共用标准 Payload API，通过同一套 [homepage-content skill](skills/homepage-content/SKILL.md) 和 [内容客户端](docs/content-tools.md) 管理文章与作品，包括批量收录、补空白资料、文章发布和作品关联。工具使用专用内容身份，写入默认只预览，确认执行时才加 `--apply`；凭据单独配置，不随仓库分发。
+
+```sh
+node scripts/content-client.mjs --help
+node scripts/content-client.mjs works list --query "TUNIC"
+node scripts/content-client.mjs posts list --locale zh
+```
 
 ## 本地运行
 
-要求 Node.js ≥22.20.0、pnpm 10.28.2（以 `package.json` 为准）。
+要求 Node.js ≥22.20.0、pnpm 10.28.2，以 [package.json](package.json) 为准。
+
+先按 [本地使用指南](docs/local-usage.md) 和 [Payload 后台说明](services/payload/README.md) 准备本机环境变量、开发数据库与上传目录，再安装依赖并构建：
 
 ```sh
 pnpm install --frozen-lockfile
+npm ci --prefix services/payload
 pnpm preview:prepare
 ```
 
-准备有效的后台配置与已有数据库后，执行上述准备命令一次；然后在 VS Code 的 WSL 窗口选择 **Homepage：全部服务（生产试用）**，按 **F5**。前台提供静态文件，Payload 运行生产构建，普通启动不编译或热更新。
+在 VS Code 的 WSL 窗口打开仓库，选择 **Homepage：全部服务（生产试用）**，按 **F5**：
 
-访问 http://localhost:4321；在 http://localhost:3000/admin 管理文章和作品。保存内容后运行 `pnpm preview:refresh`，再刷新前台；修改源码后停止服务并重新执行 `pnpm preview:prepare`。开发热更新另有独立入口，不用于日常体验。当前本地文章已切换到 Payload，原生 Markdown 写作室只管理备份。配置与日志见 [本地使用指南](docs/local-usage.md)。
+| 用途 | 本机地址 |
+| --- | --- |
+| 网站 | http://localhost:4321 |
+| 内容后台 | http://localhost:3000/admin |
+| 作品表格 | http://localhost:3000/admin/works-table |
+
+日常试用运行已构建的网站与生产模式后台。保存内容后执行 `pnpm preview:refresh`，再刷新前台；修改源码后停止服务，重新执行 `pnpm preview:prepare`。需要热更新时，另选开发模式。
+
+本地开发数据与服务器正式数据独立维护。Git 同步源码和已审查的迁移脚本；数据库、上传文件、密钥和个人导入清单不提交 Git。原 `src/content/blog/` 中的文章保留为备份，当前正式站使用 Payload Posts 作为唯一文章来源。
+
+## 开发与部署
+
+在 WSL 开发并验证，服务器负责部署。主要检查命令：
 
 ```sh
 pnpm check
@@ -24,48 +61,33 @@ pnpm test
 pnpm test:editor
 pnpm --dir cms build
 pnpm build
-pnpm preview
 ```
 
-生产构建生成 `dist/`，可由 Nginx 静态托管。配置修改后重启开发服务器或重新构建。
+源码推送到 `main` 后，现有 GitHub Actions 执行检查、构建和镜像验收，成功后自动部署同一提交及镜像。内容编辑通过另一条发布流程处理：公开文章或作品变化后，等待最后一次变化后的 180 秒静默期，再构建和发布静态页面；失败保留旧站。
 
-## 内容与目录
+部署不会自动执行数据库迁移、重新导入内容或用本地数据覆盖正式数据。完整流程见 [CI/CD](docs/ci-cd.md) 和 [服务器部署](deploy/server/README.md)。
 
-- `config/site.yaml`：域名、作者、头像、导航和可选功能。
-- `src/content/blog/`：18 篇个人文章的 Markdown 备份，不再编辑；主题示例归档于 `_examples/`，不被站点收录。当前本地唯一文章来源为 Payload Posts。
-- `src/pages/about.md`：个人介绍。
-- `cms/`：Koharu 原生本地 Markdown 管理工具。
-- `services/payload/`：已迁移的独立作品管理后台，使用自己的 npm 锁文件；[使用说明](services/payload/README.md)。
-- `legacy/`：两个旧项目的完整本地参考，保留原 Git 历史与未提交修改；不入新仓库，不参与检查、构建或部署。
+## 目录与文档
 
-Payload 管理作品、媒体、管理员和 Markdown 文章。八个元数据 Provider 为作品补全事实资料，评分、状态和感想由自己填写。Library 在构建时读取公开作品；每个作品可选择一篇文章，短感受留空时显示文章标题，已有短感受不被覆盖。详见 [Library 使用](docs/library.md)。
+| 位置 | 用途 |
+| --- | --- |
+| `config/site.yaml` | 网站信息、导航和功能配置 |
+| `src/pages/`、`src/components/` | 页面与组件 |
+| `src/pages/about.md` | 个人介绍 |
+| `src/data/projects.ts` | 首页项目资料 |
+| `services/payload/` | 文章、作品与媒体后台，使用独立 npm 锁文件 |
+| `skills/homepage-content/` | 统一内容管理 Skill 和标准 API 客户端 |
+| `cms/` | 上游原生 Markdown 工具，用于文件模式；不编辑当前 Payload 文章 |
+| `deploy/server/` | 部署模板，正式配置、数据和证书在独立部署目录维护 |
 
-媒体库 Agent 可使用仓库 [skill](skills/homepage-library/SKILL.md) 和受限 API 客户端，支持作品增删查改及元数据检索；认证、预览及旧清单导入见 [Agent 使用说明](docs/library-agent.md)。
+- [Library 使用](docs/library.md)与[作品表格](docs/works-table.md)
+- [内容工具与 API](docs/content-tools.md)
+- [本地使用](docs/local-usage.md)
+- [开发交接](docs/development-handoff.md)与[阶段记录](docs/project-status.md)
+- [项目展示](docs/projects.md)
 
-文章来源由 `CONTENT_SOURCE=files|payload` 选择；当前 WSL 已导入 18 篇个人文章并启用 `payload`。新环境的示例配置仍默认文件模式，切换需要先备份、导入、验证，再配置构建只读令牌；操作顺序见 [文章迁移与部署交接](docs/posts-deployment.md)。服务器尚未切换。原生写作室保留为 Markdown 工具，Payload 模式下应在 `/admin` 编辑文章。
+## 来源与许可
 
-顶栏为首页、文章、媒体库、关于、友链。首页项目卡片资料见 `src/data/projects.ts`，截图及开发文章关联说明见 [项目展示](docs/projects.md)。周刊推荐、歌单入口和背景音乐暂时隐藏，动态功能继续关闭。
+感谢 [Astro Koharu](https://github.com/cosZone/astro-koharu) 提供的网站主题。本仓库保留上游署名与 [AGPL-3.0 许可证](LICENSE)。
 
-## 作品后台
-
-```sh
-cd services/payload
-npm ci
-npm run dev
-```
-
-访问 http://localhost:3000/admin，使用原管理员账号。当前本地数据库是旧项目的一致副本；旧库保留原样。新机器初始化和导入步骤见后台 README。Koharu 与 Payload 的代码、依赖和部署独立；构建完整 Library 时需要访问后台公开 API，访客不会请求作品 API。未配置数据地址时可单独构建 Koharu 的空 Library。
-
-## Library 数据地址
-
-根目录 `.env` 中设置 `PAYLOAD_URL=http://127.0.0.1:3000`。后台启动后，打开 `/library` 查看作品；开发时保存作品后刷新页面，线上静态站则需要重新构建并发布。文章可通过 `works: [作品-slug]` 关联卡片，详见 Library 使用说明。
-
-## 来源与进度
-
-- [上游版本与修改边界](docs/upstream-source.md)
-- [阶段状态与后续迁移](docs/project-status.md)
-- [Koharu 原生快速开始](GETTING-STARTED.md)
-- [上游 README](docs/upstream/README.md)
-- [写作室说明](docs/features/editor.md)
-
-保留 Koharu 的 [AGPL-3.0 许可证](LICENSE) 和原有署名。源码通过官方仓库导入，公开仓库为 [TraceOnSnow/homepage](https://github.com/TraceOnSnow/homepage)，保留用于跟踪主题的 `upstream` remote。网站已部署腾讯云；本轮文章功能在 WSL 开发，服务器切换需按部署交接执行。
+上游资料见 [原始 README](docs/upstream/README.md)、[快速开始](GETTING-STARTED.md)和[上游版本与修改边界](docs/upstream-source.md)。
