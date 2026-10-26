@@ -583,6 +583,10 @@ navigation:
   # Optional explicit Moments position. When omitted, enabled Moments is inserted after Archives.
   # - feature: moments
   #   icon: ri:chat-smile-3-fill
+  - name: 关于
+    nameKey: nav.about
+    path: /about
+    icon: fa6-regular:circle-user
   - name: 文章 # 有子菜单时，path 可省略
     nameKey: nav.posts
     icon: ri:quill-pen-ai-fill
@@ -603,14 +607,6 @@ navigation:
     nameKey: nav.library
     path: /library
     icon: ri:book-2-fill
-  - name: 关于
-    nameKey: nav.about
-    path: /about
-    icon: fa6-regular:circle-user
-  - name: 友链
-    nameKey: nav.friends
-    path: /friends
-    icon: ri:links-line
 
 # =============================================================================
 # Christmas/Seasonal Features
