@@ -1,0 +1,25 @@
+---
+import HomeSider from '@components/layout/HomeSider.astro';
+import ProjectSection from '@components/projects/ProjectSection.astro';
+import Cover from '@components/ui/cover/Cover.astro';
+import Layout from '@layouts/Layout.astro';
+import TwoColumnLayout from '@layouts/TwoColumnLayout.astro';
+import { siteConfig } from '@lib/config/site';
+import { defaultLocale, t } from '@/i18n';
+
+interface Props {
+  locale?: string;
+}
+
+const { locale = defaultLocale } = Astro.props;
+---
+
+<Layout locale={locale} title={`${t(locale, 'projects.title')} | ${siteConfig.title}`}>
+  <TwoColumnLayout>
+    <Cover compact slot="cover" title={t(locale, 'projects.title')} />
+    <HomeSider slot="sider" />
+    <div class="index-surface shadow-box min-w-0">
+      <ProjectSection locale={locale} />
+    </div>
+  </TwoColumnLayout>
+</Layout>

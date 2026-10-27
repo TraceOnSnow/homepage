@@ -1,0 +1,32 @@
+---
+import { localizedPath, t } from '@/i18n';
+
+interface Props {
+  locale: string;
+}
+
+const { locale } = Astro.props;
+const links = [
+  { path: '/posts', label: t(locale, 'nav.posts') },
+  { path: '/categories', label: t(locale, 'nav.categories') },
+  { path: '/tags', label: t(locale, 'nav.tags') },
+  { path: '/archives', label: t(locale, 'nav.archives') },
+];
+---
+
+<nav aria-label={t(locale, 'nav.posts')} class="flex flex-wrap gap-2" data-post-navigation>
+  {links.map((link) => (
+    <a
+      href={localizedPath(link.path, locale)}
+      aria-current={link.path === '/posts' ? 'page' : undefined}
+      class:list={[
+        'rounded-full px-4 py-2 text-sm transition-colors',
+        link.path === '/posts'
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-muted text-muted-foreground hover:text-foreground',
+      ]}
+    >
+      {link.label}
+    </a>
+  ))}
+</nav>

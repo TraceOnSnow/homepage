@@ -1,9 +1,10 @@
 ---
 import HomeSider from '@components/layout/HomeSider.astro';
 import PostList from '@components/post/PostList.astro';
+import PostNavigation from '@components/post/PostNavigation.astro';
 import Cover from '@components/ui/cover/Cover.astro';
 import { CONTENT_PADDING } from '@constants/layout';
-import { seoConfig } from '@constants/site-config';
+import { siteConfig } from '@constants/site-config';
 import Layout from '@layouts/Layout.astro';
 import TwoColumnLayout from '@layouts/TwoColumnLayout.astro';
 import { toPostCardDataList } from '@lib/content/transforms';
@@ -24,14 +25,15 @@ const { page, locale } = Astro.props;
 const postCardData = toPostCardDataList(page.data, locale);
 ---
 
-<Layout locale={locale} title={seoConfig.title}>
+<Layout locale={locale} title={`${t(locale, 'nav.posts')} | ${siteConfig.title}`}>
   <TwoColumnLayout>
-    <Cover slot="cover" />
+    <Cover compact slot="cover" title={t(locale, 'nav.posts')} />
     <HomeSider slot="sider" />
     <div
       class={`shadow-box bg-gradient-start tablet:shadow-none flex flex-col gap-4 overflow-clip ${CONTENT_PADDING.standard}`}
     >
       <Divider>{t(locale, 'post.postList')}</Divider>
+      <PostNavigation locale={locale} />
       <PostList posts={postCardData} page={page} />
     </div>
   </TwoColumnLayout>

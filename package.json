@@ -80,7 +80,8 @@
     "preview:refresh": "node scripts/prepare-preview.mjs --refresh",
     "test:preview:browser": "node tests/production-preview.mjs",
     "content:client": "node scripts/content-client.mjs",
-    "test:metadata:live": "node tests/metadata-live.browser.mjs"
+    "test:metadata:live": "node tests/metadata-live.browser.mjs",
+    "test:reading:browser": "node --import tsx tests/reading-projects.browser.mjs"
   },
   "dependencies": {
     "@antv/infographic": "^0.2.4",

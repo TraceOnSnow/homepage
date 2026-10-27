@@ -587,22 +587,14 @@ navigation:
     nameKey: nav.about
     path: /about
     icon: fa6-regular:circle-user
-  - name: 文章 # 有子菜单时，path 可省略
+  - name: 文章
     nameKey: nav.posts
+    path: /posts
     icon: ri:quill-pen-ai-fill
-    children: # 子菜单列表
-      - name: 分类
-        nameKey: nav.categories
-        path: /categories
-        icon: ri:grid-fill
-      - name: 标签
-        nameKey: nav.tags
-        path: /tags
-        icon: fa6-solid:tags
-      - name: 归档
-        nameKey: nav.archives
-        path: /archives
-        icon: ri:archive-2-fill
+  - name: 项目
+    nameKey: projects.title
+    path: /projects
+    icon: ri:code-box-line
   - name: 媒体库
     nameKey: nav.library
     path: /library
