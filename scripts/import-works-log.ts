@@ -2,9 +2,12 @@ import fs from 'node:fs/promises';
 import { planWorksLog } from '../src/lib/library/works-log-import';
 import { createLibraryClient } from './library-agent.mjs';
 
-const [source, output, apply] = process.argv.slice(2);
-if (!source || !output || (apply && apply !== '--apply'))
-  throw Error('Usage: import-works-log.ts <works-log.md> <new-private-report.json> [--apply]');
+const [source, output, ...flags] = process.argv.slice(2);
+const apply = flags.includes('--apply');
+const ratingFlag = flags.find((flag) => flag.startsWith('--rating-scale='));
+const ratingScale = Number(ratingFlag?.split('=')[1] || 100) as 10 | 100;
+if (!source || !output || ![10, 100].includes(ratingScale) || flags.some((flag) => flag !== '--apply' && flag !== ratingFlag))
+  throw Error('Usage: import-works-log.ts <works-log.md> <new-private-report.json> [--apply] [--rating-scale=10|100]');
 try {
   process.loadEnvFile('.env.agent.local');
 } catch (error) {
@@ -21,7 +24,7 @@ for (let page = 1; page <= 1000; page++) {
   if (!result.hasNextPage) break;
   if (page === 1000 || !result.docs.length) throw Error('Invalid or excessive pagination');
 }
-const plan = planWorksLog(await fs.readFile(source, 'utf8'), existing);
+const plan = planWorksLog(await fs.readFile(source, 'utf8'), existing, { ratingScale });
 // Persist the exact plan before the first write; refuse to overwrite a prior report.
 await fs.writeFile(output, JSON.stringify({ applied: false, plan }, null, 2), { flag: 'wx', mode: 0o600 });
 const completed: Array<{ action: string; id: number | string; title: string }> = [];

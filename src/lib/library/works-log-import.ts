@@ -81,7 +81,17 @@ function experience(raw: string) {
   };
 }
 
-export function planWorksLog(markdown: string, existing: ExistingWork[]) {
+export function planWorksLog(markdown: string, existing: ExistingWork[], options: { ratingScale?: 10 | 100 } = {}) {
+  const ratingScale = options.ratingScale ?? 100;
+  if (ratingScale !== 10 && ratingScale !== 100) throw Error('ratingScale must explicitly be 10 or 100');
+  const personalRating = (entry: RecordEntry) => {
+    if (entry.fields.评分 === undefined) return undefined;
+    const value = Number(entry.fields.评分);
+    if (!Number.isFinite(value) || value < 0 || value > ratingScale) throw Error(`Invalid rating: ${entry.title}`);
+    if (ratingScale === 100) return value;
+    const [coefficient, exponent = '0'] = String(value).split('e');
+    return Number(`${coefficient}e${Number(exponent) + 1}`);
+  };
   const creates: Array<{ title: string; data: Record<string, unknown> }> = [];
   const updates: Array<{ id: number | string; title: string; expectedUpdatedAt: unknown; data: Record<string, unknown> }> = [];
   const skipped: Array<{ title: string; reason: string }> = [];
@@ -136,7 +146,7 @@ export function planWorksLog(markdown: string, existing: ExistingWork[]) {
         ),
       );
       for (const [field, value] of Object.entries({
-        rating: entry.fields.评分 === undefined ? undefined : Number(entry.fields.评分),
+        rating: personalRating(entry),
         status: personal.at(-1)?.status,
       })) {
         if (value !== undefined && current[field] !== value)
@@ -151,8 +161,8 @@ export function planWorksLog(markdown: string, existing: ExistingWork[]) {
     const slug = `${type}-${primary.provider}-${primary.externalId}`.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
     if (existing.some((work) => work.slug === slug) || creates.some((work) => work.data.slug === slug))
       throw Error(`Slug conflict: ${slug}`);
-    const rating = entry.fields.评分 === undefined ? undefined : Number(entry.fields.评分);
-    if (rating !== undefined && (!Number.isFinite(rating) || rating < 0 || rating > 10))
+    const rating = personalRating(entry);
+    if (rating !== undefined && (!Number.isFinite(rating) || rating < 0 || rating > 100))
       throw Error(`Invalid rating: ${entry.title}`);
     creates.push({
       title: entry.title,

@@ -43,7 +43,7 @@ test('full Works table edits personal fields, preserves history, manages article
   await row.getByLabel('Table private game结束时间').fill('2023-05')
   await page.getByLabel('搜索已收录作品').fill('Table public book')
   const book = page.locator(`tr[data-work-id="${second.id}"]`)
-  await book.getByLabel('Table public book评分').fill('8.5')
+  await book.getByLabel('Table public book评分').fill('85')
   await book.getByLabel('Table public book结束时间').fill('2020')
   await book.getByLabel('Table public book可见性').selectOption('private')
   await page.getByRole('button', { name: '保存草稿（2）', exact: true }).click()
@@ -70,7 +70,7 @@ test('full Works table edits personal fields, preserves history, manages article
   await expect(page.getByRole('button', { name: '保存草稿（0）', exact: true })).toBeDisabled()
   await book.getByRole('button', { name: 'Table public book发布', exact: true }).click()
   await expect(book.getByText('已发布 · 公开', { exact: true })).toBeVisible()
-  expect((await (await anonymousRead(second.id)).json()).rating).toBe(8.5)
+  expect((await (await anonymousRead(second.id)).json()).rating).toBe(85)
 
   await book.getByLabel('Table public book评分').fill('6')
   await request.patch(`/api/works/${second.id}?draft=true`, { headers, data: { rating: 7, _status: 'draft' } })

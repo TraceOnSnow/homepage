@@ -9,7 +9,7 @@ const workSchema = z.object({
   visibility: z.literal('public'),
   _status: z.literal('published'),
   status: z.enum(WORK_STATUSES).nullish(),
-  rating: z.number().min(0).max(10).nullish(),
+  rating: z.number().min(0).max(100).nullish(),
   releaseDate: z.string().nullish(),
   createdAt: z.string().nullish(),
   experiences: z.array(z.object({ startedOn: z.string().nullish(), endedOn: z.string().nullish() })).nullish(),

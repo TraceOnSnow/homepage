@@ -1,6 +1,6 @@
 import { preserveContentHistory, restoreAsDraft } from './lifecycle'
 import { dictionaries } from '@/lib/ui/dictionary'
-import type { CollectionConfig, Where } from 'payload'
+import { ValidationError, type CollectionConfig, type CollectionBeforeValidateHook, type Where } from 'payload'
 import { cover, httpURL, slug, tags, writes } from './shared'
 
 export { workTypes } from '@/lib/metadata/types'
@@ -8,6 +8,15 @@ import { workTypes } from '@/lib/metadata/types'
 import { validateExperienceDate } from '@/lib/experience'
 const statuses = ['planned', 'in-progress', 'completed', 'on-hold', 'dropped'] as const
 const statusOptions = statuses.map(value => ({ value, label: { zh: dictionaries.zh[value], en: dictionaries.en[value] } }))
+
+// Native draft saves skip field validators; enforce the scale for every API write.
+const validatePersonalRating: CollectionBeforeValidateHook = ({ data }) => {
+  const rating = data?.rating
+  if (rating !== undefined && rating !== null && rating !== '' && (typeof rating !== 'number' || !Number.isFinite(rating) || rating < 0 || rating > 100)) {
+    throw new ValidationError({ errors: [{ path: 'rating', message: '个人评分须为 0–100，100 满分；未评分请留空。' }] })
+  }
+  return data
+}
 
 export const Works: CollectionConfig = {
   labels: { singular: {zh: '作品', en: 'Works'}, plural: {zh: '作品', en: 'Works'} },
@@ -22,14 +31,14 @@ export const Works: CollectionConfig = {
     ] },
     readVersions: ({ req }) => Boolean(req.user),
   },
-  hooks: { beforeChange: [restoreAsDraft], beforeDelete: [preserveContentHistory] },
+  hooks: { beforeValidate: [validatePersonalRating], beforeChange: [restoreAsDraft], beforeDelete: [preserveContentHistory] },
   fields: [
     { name: 'type', label: {zh: '类型', en: 'Type'}, type: 'select', required: true, defaultValue: 'game', options: workTypes.map(value => ({ value, label: { zh: dictionaries.zh[value], en: dictionaries.en[value] } })) },
     { name: 'metadataSearch', type: 'ui', admin: {
       components: { Field: '/components/admin/MetadataSearch#MetadataSearch' },
     } },
     { name: 'title', label: {zh: '标题', en: 'Title'}, type: 'text', required: true }, slug,
-    { name: 'rating', label: {zh: '个人评分', en: 'Rating'}, type: 'number', min: 0, max: 10, admin: { step: 0.1, description: { zh: '个人评分，0–10；未评分时留空。', en: 'Personal rating, 0–10; leave blank if unrated.' } } },
+    { name: 'rating', label: {zh: '个人评分（满分100）', en: 'Rating (out of 100)'}, type: 'number', min: 0, max: 100, admin: { step: 1, description: { zh: '个人评分，0–100，100 满分；未评分时留空。', en: 'Personal rating, 0–100 (out of 100); leave blank if unrated.' } } },
     { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'completed' }, tags,
     { name: 'note', label: {zh: '短感受', en: 'Short reaction'}, type: 'textarea', admin: {
       components: { Field: '/components/admin/ReactionField#ReactionField' },

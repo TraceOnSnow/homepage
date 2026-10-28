@@ -37,7 +37,7 @@ Works 与 Posts 的 list/get 都读取最新草稿。作品 create/import/update
 - 创建资料写入私有 JSON，执行 `works create FILE [--apply]`；需要 `title`、`type`、稳定 `slug`。默认是记录已体验作品，状态 `completed`；待体验明确填写 `planned`，用户未说明是否体验过时先核对或显式设 `null`。新作品仍默认私密；用户要求公开时设置 `visibility: "public"`。
 - 更新用 `works update ID FILE [--apply]`。只补空事实字段；数组更新保留原项和 `id`。`experiences[].startedOn/endedOn` 支持 `YYYY`、`YYYY-MM`、`YYYY-MM-DD`，未知设空；旧 ISO 时间戳兼容，不主动改写。通常只需结束时间；公开清单按结束时间排序，无结束时间用添加时间。
 - 进度说明、通关次数、备注统一写在作品 `note`（短感受）；不新增独立进度字段。已有体验记录内的旧 `progress/note/status/platform` 原样保留，不自动搬入公开短感受。
-- 类型：game、anime、book、movie、tv、manga、comic、boardgame；个人评分 0–10，未知留空。
+- 类型：game、anime、book、movie、tv、manga、comic、boardgame；个人评分 0–100（100 满分，85 = 原 8.5），默认输入整数；既有小数精度保留，未知留空。标准 API 和清单直接使用百分制，不按数值大小猜测量表或重复乘十。
 
 ### 联网补资料
 

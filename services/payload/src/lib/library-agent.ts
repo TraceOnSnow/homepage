@@ -62,7 +62,7 @@ function data(value: unknown): RecordValue {
   if ('rating' in result && result.rating !== null && (typeof result.rating !== 'number' || !Number.isFinite(result.rating))) throw new InputError('Invalid rating')
   // Native drafts allow incomplete fields. Keep the old capability's explicit
   // rating/URL/status validation while changing its writes to private drafts.
-  if (typeof result.rating === 'number' && (result.rating < 0 || result.rating > 10)) throw new InputError('Work validation failed', 422)
+  if (typeof result.rating === 'number' && (result.rating < 0 || result.rating > 100)) throw new InputError('Work validation failed', 422)
   if (result.coverUrl && httpURL(result.coverUrl) !== true) throw new InputError('Work validation failed', 422)
   if (result.status != null && !['planned', 'in-progress', 'completed', 'on-hold', 'dropped'].includes(String(result.status))) throw new InputError('Work validation failed', 422)
   if (result.visibility != null && !['public', 'private'].includes(String(result.visibility))) throw new InputError('Work validation failed', 422)

@@ -32,7 +32,7 @@ test('table patches keep historic dates, IDs, notes and progress, and preserve r
   assert.equal(changed.experiences?.[1].endedOn, '2023-05')
   assert.equal(work.experiences![1].endedOn, '2022-01-05T00:00:00.000Z')
   assert.equal('note' in changed, false)
-  assert.throws(() => workPatch(work, { ...values, rating: '11' }), /评分/)
+  assert.throws(() => workPatch(work, { ...values, rating: '101' }), /评分/)
   assert.throws(() => workPatch(work, { ...values, endedOn: '2023-02-29' }), /时间/)
 })
 
@@ -143,7 +143,7 @@ test('navigation protection excludes native drawers, modified clicks, downloads 
 
 test('batch save reports serial observed progress, keeps failed inputs, and continues after validation or concurrency errors', async () => {
   const originals = [9, 10, 11, 12].map(id => ({ ...structuredClone(published), id, title: `Work ${id}` }))
-  const rows = originals.map((base, index) => ({ base, publishedBase: structuredClone(base), values: { ...workValues(base), rating: index === 1 ? '11' : index === 3 ? '0' : '8' } }))
+  const rows = originals.map((base, index) => ({ base, publishedBase: structuredClone(base), values: { ...workValues(base), rating: index === 1 ? '101' : index === 3 ? '0' : '8' } }))
   const before = structuredClone(rows)
   const apis = new Map(originals.map(work => [work.id, apiFixture(structuredClone(work), structuredClone(work))]))
   apis.get(9)!.state.latest.updatedAt = '2026-02-01T00:00:00Z'
@@ -165,4 +165,10 @@ test('batch save reports serial observed progress, keeps failed inputs, and cont
   assert.deepEqual(progress.map(value => value.done), [0, 1, 1, 2, 2, 3])
   for (const id of [9, 10, 12]) assert.equal(apis.get(id)!.calls.some(call => call.method === 'PATCH'), false)
   assert.equal(apis.get(11)!.calls.filter(call => call.method === 'PATCH').length, 1)
+})
+
+
+test('hundred-point table input preserves explicit scores and decimal legacy precision', () => {
+  for (const rating of ['0', '85', '100', '83.75', '8.5']) assert.equal(workPatch(published, { ...workValues(published), rating }).rating ?? 0, Number(rating))
+  for (const rating of ['-1', '100.1', 'bad']) assert.throws(() => workPatch(published, { ...workValues(published), rating }), /评分/)
 })

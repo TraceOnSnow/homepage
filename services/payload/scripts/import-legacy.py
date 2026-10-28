@@ -24,6 +24,9 @@ def import_legacy(source: Path, destination: Path) -> dict:
         raise ValueError('Destination already has a database or .env; refusing to overwrite')
     if (storage / 'media').exists() and any((storage / 'media').iterdir()):
         raise ValueError('Destination media directory is not empty; refusing to overwrite')
+    # Schema equality cannot prove that a data-only rating migration ran.
+    data_migrations = {'20261028_120000_rating_scale_100'}
+    rating_marker = 'data:personal-rating-scale:100:v1'
     snapshots = sorted((SERVICE_ROOT / 'src/migrations').glob('*.json'))
     stage = Path(tempfile.mkdtemp(prefix='.legacy-import-', dir=destination))
     try:
@@ -43,6 +46,8 @@ def import_legacy(source: Path, destination: Path) -> dict:
             # Match the actual source schema, never mark future migrations applied.
             baseline = None
             for snapshot in reversed(snapshots):
+                if snapshot.stem in data_migrations:
+                    continue
                 contract = json.loads(snapshot.read_text())['tables']
                 matches = True
                 for table, schema in contract.items():
@@ -59,8 +64,11 @@ def import_legacy(source: Path, destination: Path) -> dict:
             if copied.execute('PRAGMA foreign_key_check').fetchone():
                 raise ValueError('Source snapshot contains foreign-key violations')
             recorded = {row[0] for row in copied.execute('SELECT name FROM payload_migrations')}
-            if recorded - {'dev'} - set(migration_names):
+            allowed_history = set(migration_names) | data_migrations | {rating_marker}
+            if recorded - {'dev'} - allowed_history:
                 raise ValueError('Source has unknown migration history; inspect it before importing')
+            if (rating_marker in recorded) != ('20261028_120000_rating_scale_100' in recorded):
+                raise ValueError('Incomplete rating migration history; complete migration before legacy import')
             # This snapshot already has the full baseline schema. Replace only dev-mode
             # bookkeeping, so production migrate never replays CREATE TABLE on existing data.
             copied.execute("DELETE FROM payload_migrations WHERE name = 'dev'")

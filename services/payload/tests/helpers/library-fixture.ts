@@ -14,7 +14,7 @@ try {
     for (let index = 0; index < (type === 'game' ? 26 : 1); index++) {
       await payload.create({ collection: 'works', data: {
         type, title: `Library ${type} ${index}`, slug: `library-test-${type}-${index}`, visibility: 'public', _status: 'published',
-        status: statuses[index % statuses.length], rating: index === 0 ? null : index === 1 ? 0 : 8,
+        status: statuses[index % statuses.length], rating: index === 0 ? null : index === 1 ? 0 : 80,
         note: `Public note for ${type} ${index}`, cover: type === 'game' && index === 0 ? media.id : undefined,
         experiences: [{ endedOn: new Date(Date.UTC(2026, 11, 31 - index)).toISOString() }],
         sources: [{ provider: 'test', externalId: `${type}-${index}`, url: `https://example.test/${type}/${index}` }],

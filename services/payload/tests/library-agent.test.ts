@@ -81,7 +81,7 @@ test('update and delete require a single ID and version, then constrain their Wh
   assert.deepEqual(requests[0].data, { note: 'Changed', _status: 'draft' })
   for (const request of requests) assert.deepEqual(request.where, { and: [{ id: { equals: 2 } }, { updatedAt: { equals: version } }] })
   assert.equal((await call({ action: 'delete', id: 2, expectedUpdatedAt: version }, { findByID: async () => ({ updatedAt: version }), update: async () => ({ docs: [], errors: [] }) })).status, 409)
-  assert.equal((await call({ action: 'update', id: 2, expectedUpdatedAt: version, data: { rating: 20 } }, { update: async () => ({ docs: [], errors: [{ message: 'private internal error' }] }) })).status, 422)
+  assert.equal((await call({ action: 'update', id: 2, expectedUpdatedAt: version, data: { rating: 120 } }, { update: async () => ({ docs: [], errors: [{ message: 'private internal error' }] }) })).status, 422)
 })
 
 test('metadata requests share existing service and reject client URLs', async () => {
@@ -125,7 +125,7 @@ test('concurrent Agent edits are serialized and the second stale mutation confli
 test('missing records and field validation have safe error responses', async () => {
   const missing = await call({ action: 'get', id: 999 }, { findByID: async () => { throw Object.assign(new Error('SELECT secret'), { status: 404 }) } })
   assert.deepEqual(missing, { status: 404, body: { error: 'Work not found' } })
-  const invalid = await call({ action: 'create', data: { title: 'Work', type: 'game', rating: 11 } }, { create: async () => { throw Object.assign(new Error('private validation dump'), { status: 400 }) } })
+  const invalid = await call({ action: 'create', data: { title: 'Work', type: 'game', rating: 101 } }, { create: async () => { throw Object.assign(new Error('private validation dump'), { status: 400 }) } })
   assert.deepEqual(invalid, { status: 422, body: { error: 'Work validation failed' } })
 })
 

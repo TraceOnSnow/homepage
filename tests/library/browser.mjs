@@ -142,7 +142,7 @@ try {
       'href',
       '/post/library-integration-article',
     );
-    await expect(shelf.locator('[data-work-slug="library-test-game-1"] .bangumi-own-score')).toHaveText('★ 0');
+    await expect(shelf.locator('[data-work-slug="library-test-game-1"] .bangumi-own-score')).toHaveText('★ 0/100');
     await shelf.locator('[data-library-type="game"]').click();
     await expect(shelf.locator('[data-work-slug]')).toHaveCount(24);
     await shelf.getByRole('button', { name: '下一页', exact: true }).click();

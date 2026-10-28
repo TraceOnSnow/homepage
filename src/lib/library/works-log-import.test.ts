@@ -65,3 +65,12 @@ test('conflicting source identities are held for review', () => {
   ]);
   assert.ok(plan.skipped.some((item) => item.title === 'First' && item.reason.includes('different title')));
 });
+
+test('new lists are hundred-point and legacy ten-point imports require an explicit scale', () => {
+  const markdown = '## 游戏\n### Score\n- 来源：igdb#score\n- 评分：8.37';
+  assert.equal(planWorksLog(markdown, []).creates[0].data.rating, 8.37);
+  assert.equal(planWorksLog(markdown, [], { ratingScale: 10 }).creates[0].data.rating, 83.7);
+  assert.equal(planWorksLog(markdown.replace('8.37', '85'), []).creates[0].data.rating, 85);
+  assert.throws(() => planWorksLog(markdown.replace('8.37', '85'), [], { ratingScale: 10 }), /Invalid rating/);
+  assert.throws(() => planWorksLog(markdown.replace('8.37', '101'), []), /Invalid rating/);
+});

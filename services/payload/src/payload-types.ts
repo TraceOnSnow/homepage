@@ -183,7 +183,7 @@ export interface Work {
   generateSlug?: boolean | null;
   slug: string;
   /**
-   * Personal rating, 0–10; leave blank if unrated.
+   * Personal rating, 0–100 (out of 100); leave blank if unrated.
    */
   rating?: number | null;
   status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;

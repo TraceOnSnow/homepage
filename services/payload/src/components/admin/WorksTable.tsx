@@ -138,7 +138,7 @@ export function WorksTable() {
     if (!busy && dirtyCount) void save()
   }}>
     <h1>作品表格</h1>
-    <p>直接整理评分、状态和体验时间。时间可填 2020、2020-05 或 2020-05-18；未知留空。日期编辑对应最后一条体验记录，其他历史记录保持不变。</p>
+    <p>直接整理评分、状态和体验时间。个人评分为 0–100，100 满分，未评分留空。时间可填 2020、2020-05 或 2020-05-18；未知留空。日期编辑对应最后一条体验记录，其他历史记录保持不变。</p>
     <div className="works-table__toolbar">
       <input aria-label="搜索已收录作品" placeholder="搜索已收录作品" value={query} onChange={event => filter(setQuery, event.target.value)} />
       <select aria-label="筛选类型" value={type} onChange={event => filter(setType, event.target.value)}><option value="">全部类型</option>{workTypes.map(type => <option key={type} value={type}>{dictionaries.zh[type]}</option>)}</select>
@@ -161,7 +161,7 @@ export function WorksTable() {
     <p className="works-table__muted">保存草稿保留网站旧版本。每行主动发布后，按所选可见性更新；下架保留草稿和历史。关联文章有独立发布状态，保存作品不会发布文章。短感受留空时使用文章标题。</p>
     <div className="works-table__scroll" role="region" aria-label="作品编辑表格" aria-busy={busy} tabIndex={0}>
       <table><caption>全部作品及个人记录，共 {rows.length} 条；当前筛选 {visible.length} 条</caption>
-        <thead><tr>{['作品', '状态', '个人评分', '开始时间', '结束时间', '短感受', '关联笔记', '发布时可见性', '草稿与发布'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <thead><tr>{['作品', '状态', '个人评分（满分100）', '开始时间', '结束时间', '短感受', '关联笔记', '发布时可见性', '草稿与发布'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{pageRows.map(row => <WorkTableRow key={row.base.id} row={row} articles={articles} disabled={busy}
           onChange={patch => change(row.base.id, patch)} onArticle={post => setArticles(current => ({ ...current, [post.id]: post }))} onWork={mergeWork}
           onRemove={() => setRows(current => current.filter(item => item.base.id !== row.base.id))}
@@ -202,7 +202,7 @@ function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, on
         onSave={async () => { const saved = await tableRequest<TableWork>(`works/${work.id}?depth=0&draft=true`); onWork(saved); drawer.closeDrawer() }} />
     </td>
     <td data-label="状态"><select aria-label={`${work.title}状态`} value={values.status} disabled={disabled} onChange={event => onChange({ status: event.target.value })}><option value="">未填写</option>{statuses.map(value => <option key={value} value={value}>{dictionaries.zh[value]}</option>)}</select></td>
-    <td data-label="个人评分"><input aria-label={`${work.title}评分`} className="works-table__rating" type="number" min="0" max="10" step="0.1" value={values.rating} disabled={disabled} onChange={event => onChange({ rating: event.target.value })} /></td>
+    <td data-label="个人评分"><input aria-label={`${work.title}评分`} className="works-table__rating" type="number" min="0" max="100" step="1" value={values.rating} disabled={disabled} onChange={event => onChange({ rating: event.target.value })} /></td>
     <td data-label="开始时间"><input aria-label={`${work.title}开始时间`} className="works-table__date" value={values.startedOn} disabled={disabled} placeholder="可空" onChange={event => onChange({ startedOn: event.target.value })} /></td>
     <td data-label="结束时间"><input aria-label={`${work.title}结束时间`} className="works-table__date" value={values.endedOn} disabled={disabled} placeholder="年 / 月 / 日" onChange={event => onChange({ endedOn: event.target.value })} /></td>
     <td data-label="短感受"><textarea aria-label={`${work.title}短感受`} rows={2} value={values.note} placeholder={article?.title || ''} disabled={disabled} onChange={event => onChange({ note: event.target.value })} /></td>

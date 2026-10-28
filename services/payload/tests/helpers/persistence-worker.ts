@@ -2,11 +2,16 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getPayload } from 'payload'
+import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-sqlite'
 import config from '../../src/payload.config'
 
 const payload = await getPayload({ config })
 try {
-  await payload.db.migrate()
+  if (process.argv[2] === 'create') {
+    // This fixture intentionally represents a pre-percent legacy database.
+    const { migrations } = await import('../../src/migrations')
+    await payload.db.migrate({ migrations: migrations.slice(0, -1).map(m => ({ name: m.name, up: args => m.up(args as MigrateUpArgs), down: args => m.down(args as MigrateDownArgs) })) })
+  } else await payload.db.migrate()
   if (process.argv[2] === 'create') {
     await payload.create({ collection: 'users', data: { email: 'owner@example.test', password: 'persistence-test-password' } })
     const { default: sharp } = await import('sharp')
@@ -15,7 +20,7 @@ try {
     await payload.create({ collection: 'works', data: { title: 'Persistent work', slug: 'persistent-work', type: 'game', rating: 8.5, status: 'completed', note: 'Personal note', cover: media.id, sources: [{ provider: 'igdb', externalId: '12' }], experiences: [{ status: 'completed', platform: 'PC', note: 'Experience note' }], visibility: 'public' } })
   }
   const work = (await payload.find({ collection: 'works', where: { slug: { equals: 'persistent-work' } }, depth: 1 })).docs[0]
-  assert.equal(work.rating, 8.5)
+  assert.equal(work.rating, process.argv[2] === 'create' ? 8.5 : 85)
   assert.equal(work.status, 'completed')
   assert.equal(work.note, 'Personal note')
   assert.equal(work.sources?.[0].externalId, '12')

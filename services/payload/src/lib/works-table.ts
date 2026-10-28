@@ -40,7 +40,7 @@ export function workPatch(work: TableWork, values: WorkValues): Partial<Work> {
   const patch: Partial<Work> = {}
   if (values.status !== original.status) patch.status = (values.status || null) as Work['status']
   if (values.rating !== original.rating) {
-    if (values.rating.trim() && (!Number.isFinite(Number(values.rating)) || Number(values.rating) < 0 || Number(values.rating) > 10)) throw Error('评分须为 0–10，未评分请留空。')
+    if (values.rating.trim() && (!Number.isFinite(Number(values.rating)) || Number(values.rating) < 0 || Number(values.rating) > 100)) throw Error('评分须为 0–100，未评分请留空。')
     patch.rating = values.rating.trim() ? Number(values.rating) : null
   }
   if (values.note !== original.note) patch.note = values.note

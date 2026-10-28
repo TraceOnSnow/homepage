@@ -47,7 +47,7 @@ test('Library exports only public display fields and personal ratings, preservin
   assert.ok(!JSON.stringify(displayed).includes('must-not-ship'));
   assert.ok(!('communityScore' in displayed));
   assert.throws(() => publicLibraryWork({ ...work, type: 'unknown' }, base), /invalid public Work/);
-  assert.throws(() => publicLibraryWork({ ...work, rating: 11 }, base), /invalid public Work/);
+  assert.throws(() => publicLibraryWork({ ...work, rating: 101 }, base), /invalid public Work/);
 });
 
 test('all eight Work types and five statuses map without Bangumi-specific assumptions', () => {
@@ -160,4 +160,9 @@ test('finished dates retain year/month/day precision and never use a later start
     assert.equal(displayed.experiencedAt, endedOn);
   }
   assert.equal(requireWork({ ...work, experiences: [{ endedOn: '2021' }, { endedOn: '2020-12' }] }).experiencedAt, '2021');
+});
+
+test('hundred-point public ratings retain fractional precision and are never multiplied by magnitude', () => {
+  for (const rating of [0, 8.5, 85, 100, 83.75]) assert.equal(requireWork({ ...work, rating }).rating, rating);
+  for (const rating of [-1, 100.1, 101]) assert.throws(() => requireWork({ ...work, rating }), /invalid public Work/);
 });

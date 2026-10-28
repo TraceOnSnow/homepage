@@ -225,6 +225,52 @@ class DeploymentTests(unittest.TestCase):
         self.assertFalse((self.base / 'evidence/deployment-blocked').exists())
         self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
 
+    def test_rating_marker_and_ledger_independently_block_legacy_including_empty_database(self):
+        for marker in (deployer.RATING_SCALE_MARKER, deployer.RATING_SCALE_MIGRATION):
+            with self.subTest(marker=marker):
+                with sqlite3.connect(self.database) as db:
+                    db.execute('DELETE FROM works')
+                    db.execute('DELETE FROM payload_migrations WHERE name != ?', ('001_initial',))
+                    db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (marker,))
+                with self.assertRaisesRegex(ValueError, 'hundred-point ratings'):
+                    deployer.check_release_compatibility(self.database, {'001_initial': 'source'})
+                deployer.check_release_compatibility(self.database, {'001_initial': 'source', deployer.RATING_SCALE_MIGRATION: 'new'})
+
+    def test_rating_marker_is_recognized_but_incomplete_history_still_blocks_deployment(self):
+        target = {'001_initial': 'source', deployer.RATING_SCALE_MIGRATION: 'new'}
+        with sqlite3.connect(self.database) as db:
+            db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (deployer.RATING_SCALE_MARKER,))
+        with self.assertRaisesRegex(ValueError, 'Incomplete rating-scale'):
+            deployer.check_migrations(self.database, target, {'001_initial': 'source'})
+        with sqlite3.connect(self.database) as db:
+            db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (deployer.RATING_SCALE_MIGRATION,))
+        deployer.check_migrations(self.database, target, {'001_initial': 'source'})
+
+    def test_failed_rating_upgrade_retains_new_app_database_and_previous_static_site(self):
+        self.git('checkout', '--quiet', '--detach', self.target)
+        directory = self.repo / deployer.MIGRATIONS
+        migration = deployer.RATING_SCALE_MIGRATION
+        (directory / f'{migration}.ts').write_text('// Reviewed hundred-point migration\n')
+        (directory / 'index.ts').write_text(
+            "import * as initial from './001_initial';\n"
+            f"import * as ratings from './{migration}';\n"
+            f"export const migrations = [{{name: '001_initial'}}, {{name: '{migration}'}}];\n")
+        self.git('add', '.')
+        self.git('commit', '--quiet', '-m', 'hundred-point ratings')
+        self.target = self.git('rev-parse', 'HEAD')
+        self.git('update-ref', 'refs/remotes/origin/main', self.target)
+        self.git('checkout', '--quiet', '--detach', self.previous)
+        with sqlite3.connect(self.database) as db:
+            for name in (deployer.RATING_SCALE_MARKER, migration):
+                db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (name,))
+        with patch.object(self.deployment, 'publish', side_effect=RuntimeError('Synthetic build failure')):
+            with self.assertRaisesRegex(RuntimeError, 'Unsafe legacy rollback blocked'):
+                self.deployment.execute(self.target, IMAGE)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), self.target)
+        self.assertEqual(os.readlink(self.base / 'public/current'), 'releases/old')
+        self.assertEqual(sum('up' in command for command in self.commands), 1)
+        self.assertIn('hundred-point ratings', (self.base / 'evidence/deployment-blocked').read_text())
+
     def test_success_uses_exact_image_and_records_previous_release(self):
         (self.repo / '.cache/og-data.json').write_text('{"generated-before-deploy":true}')
         with patch.object(self.deployment, 'publish', side_effect=self.publish):

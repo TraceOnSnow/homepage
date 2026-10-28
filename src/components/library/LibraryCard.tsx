@@ -53,7 +53,7 @@ export function LibraryCard({
       )}
       <p className="bangumi-meta">
         {showStatus && item.status && item.status !== 'in-progress' && <span>{t(`library.${item.status}`)}</span>}
-        {item.rating !== undefined && <span className="bangumi-own-score tabular-nums">★ {item.rating}</span>}
+        {item.rating !== undefined && <span className="bangumi-own-score tabular-nums">★ {item.rating}/100</span>}
       </p>
       {date && (
         <p className="mt-1 text-muted-foreground text-xs">

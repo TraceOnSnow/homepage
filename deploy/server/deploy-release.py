@@ -19,6 +19,8 @@ MIGRATIONS = 'services/payload/src/migrations'
 IMAGE_PATTERN = r'ghcr\.io/traceonsnow/homepage-payload@sha256:[0-9a-f]{64}'
 WORKS_DRAFT_MIGRATION = '20261021_034349_works_drafts'
 CONTENT_TRASH_MIGRATION = '20261022_050000_content_trash'
+RATING_SCALE_MIGRATION = '20261028_120000_rating_scale_100'
+RATING_SCALE_MARKER = 'data:personal-rating-scale:100:v1'
 
 
 def validate_release(commit, image):
@@ -77,6 +79,8 @@ def check_release_compatibility(database, target):
             for table, column in [('works', 'deleted_at'), ('cms_posts', 'deleted_at'),
                                   ('_works_v', 'version_deleted_at'), ('_cms_posts_v', 'version_deleted_at')])
         versions = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='_works_v'").fetchone()
+    if (RATING_SCALE_MIGRATION in applied or RATING_SCALE_MARKER in applied) and RATING_SCALE_MIGRATION not in target:
+        raise ValueError('Legacy release would misinterpret hundred-point ratings; use a reviewed 0–100-compatible release')
     if (CONTENT_TRASH_MIGRATION in applied or trash_schema) and CONTENT_TRASH_MIGRATION not in target:
         raise ValueError('Legacy release would expose trashed content; retain the schema and use a reviewed Trash-compatible release')
     if (WORKS_DRAFT_MIGRATION in applied or '_status' in columns or versions) and WORKS_DRAFT_MIGRATION not in target:
@@ -86,7 +90,10 @@ def check_release_compatibility(database, target):
 def check_migrations(database, target, previous):
     check_release_compatibility(database, target)
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
-        applied = [row[0] for row in connection.execute('SELECT name FROM payload_migrations ORDER BY id')]
+        history = [row[0] for row in connection.execute('SELECT name FROM payload_migrations ORDER BY id')]
+        if (RATING_SCALE_MIGRATION in history) != (RATING_SCALE_MARKER in history):
+            raise ValueError('Incomplete rating-scale migration bookkeeping; complete the reviewed manual migration first')
+        applied = [name for name in history if name != RATING_SCALE_MARKER]
         if connection.execute('PRAGMA quick_check').fetchone() != ('ok',):
             raise ValueError('Database integrity check failed')
     if applied != list(target):

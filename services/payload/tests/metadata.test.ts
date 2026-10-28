@@ -53,11 +53,11 @@ test('missing credentials never trigger network calls; invalid query is rejected
 })
 
 test('metadata fill preserves authored fields, stable slug and other provider identity', () => {
-  const current = { slug: 'my-tunic', rating: 9.5, note: '个人感想', status: 'completed', cover: 8, sources: [{ provider: 'rawg', externalId: '42' }, { provider: 'igdb', externalId: 'old' }] }
+  const current = { slug: 'my-tunic', rating: 95, note: '个人感想', status: 'completed', cover: 8, sources: [{ provider: 'rawg', externalId: '42' }, { provider: 'igdb', externalId: 'old' }] }
   const patch = metadataPatch({ type: 'game', provider: 'igdb', externalId: '12', title: 'TUNIC', aliases: ['TUNIC'], creators: [], platforms: [], source: { provider: 'igdb', externalId: '12' } }, current)
   const filled = { ...current, ...patch }
   assert.equal(filled.slug, 'my-tunic')
-  assert.equal(filled.rating, 9.5)
+  assert.equal(filled.rating, 95)
   assert.equal(filled.note, '个人感想')
   assert.equal(filled.status, 'completed')
   assert.equal(filled.cover, 8)

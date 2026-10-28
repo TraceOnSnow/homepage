@@ -25,7 +25,7 @@ export function BangumiCard({ item, showStatus }: BangumiCardProps) {
   const imageUrl = subject.images?.common || subject.images?.medium;
   // The user's own rating wins over the community average and is inked in the accent color.
   const isUserRating = item.rate > 0;
-  const score = isUserRating ? item.rate : subject.score > 0 ? subject.score : null;
+  const score = isUserRating ? item.rate * 10 : subject.score > 0 ? subject.score : null;
   const isWatching = item.type === 3;
 
   return (
@@ -46,7 +46,12 @@ export function BangumiCard({ item, showStatus }: BangumiCardProps) {
       <p className="bangumi-meta">
         {showStatus && !isWatching && <span>{t(COLLECTION_LABEL_KEYS[item.type])}</span>}
         {year && <span>{year}</span>}
-        {score !== null && <span className={cn('tabular-nums', isUserRating && 'bangumi-own-score')}>★ {score}</span>}
+        {score !== null && (
+          <span className={cn('tabular-nums', isUserRating && 'bangumi-own-score')}>
+            ★ {score}
+            {isUserRating ? '/100' : ''}
+          </span>
+        )}
       </p>
     </a>
   );
