@@ -45,6 +45,10 @@ export const enabledLocaleCodes = i18nConfig.locales.flatMap((locale) => (locale
 /** Content processing flags with field-level defaults applied. */
 export const contentConfig: ResolvedContentConfig = normalizeContentConfig(yamlConfig.content);
 
+/** Default article artwork, including the theme's 21 built-in images when no custom list is configured. */
+const BUILT_IN_COVERS = Array.from({ length: 21 }, (_, i) => `/img/cover/${i + 1}.webp`);
+export const defaultCoverList = yamlConfig?.defaultCoverList?.length ? yamlConfig.defaultCoverList : BUILT_IN_COVERS;
+
 /** Default motion level and sakura effect switches with field-level defaults applied. */
 export const motionConfig: ResolvedMotionConfig = normalizeMotionConfig(yamlConfig.motion);
 

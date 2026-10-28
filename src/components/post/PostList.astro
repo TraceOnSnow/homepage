@@ -1,8 +1,9 @@
 ---
 import EmptySvg from '@components/svg/EmptySvg';
-import { contentConfig, defaultCoverList } from '@constants/site-config';
+import { resolveArticleCover } from '@lib/covers/data';
+import { loadArticleCoverPool } from '@lib/covers/server';
+import { loadLibraryWorks } from '@lib/library/server';
 import type { Page } from 'astro';
-import { shuffle } from 'es-toolkit';
 import type { BlogPost, PostCardData } from 'types/blog';
 import { getLocaleFromUrl, t } from '@/i18n';
 import Paginator from './Paginator.astro';
@@ -18,26 +19,8 @@ interface Props {
 
 const { posts, page, showPaginator = true, baseUrl, isHomePage = false } = Astro.props;
 const locale = getLocaleFromUrl(Astro.url.pathname);
-const covers = shuffle(defaultCoverList);
-
-const imagePosition = contentConfig.postCardImagePosition;
-const isUniformPosition = imagePosition !== 'alternating';
-
-/**
- * Calculate leftClip based on postCardImagePosition config
- * @param index - The index of the post in the list
- * @returns true if image should be on the left, false for right
- */
-function getLeftClip(index: number): boolean {
-  switch (imagePosition) {
-    case 'left':
-      return true;
-    case 'right':
-      return false;
-    default:
-      return index % 2 === 0;
-  }
-}
+const [coverPool, works] = posts?.length ? await Promise.all([loadArticleCoverPool(), loadLibraryWorks()]) : [[], []];
+const payloadMode = import.meta.env.CONTENT_SOURCE === 'payload';
 ---
 
 {
@@ -52,13 +35,11 @@ function getLeftClip(index: number): boolean {
   posts && posts?.length > 0 && (
     <>
       <div class="flex flex-col gap-4">
-        {posts.map((post, index) => (
+        {posts.map((post) => (
           <PostItemCard
             key={post.slug}
             data={post}
-            leftClip={getLeftClip(index)}
-            randomCover={covers[index % covers.length]}
-            isUniformPosition={isUniformPosition}
+            artwork={resolveArticleCover(post, works, coverPool, payloadMode)}
           />
         ))}
       </div>

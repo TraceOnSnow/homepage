@@ -24,7 +24,7 @@ COPY --from=builder --chown=node:node /app/public ./public
 COPY --from=builder --chown=node:node /app/src ./src
 COPY --from=builder --chown=node:node /app/scripts ./scripts
 COPY --from=builder --chown=node:node /app/package.json /app/package-lock.json /app/tsconfig.json /app/next.config.mjs /app/next-env.d.ts ./
-RUN mkdir -p storage/database storage/media && chown -R node:node storage
+RUN command -v flock && mkdir -p storage/database storage/media && chown -R node:node storage
 USER node
 EXPOSE 3000
 CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0", "--port", "3000"]

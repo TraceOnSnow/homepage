@@ -51,6 +51,10 @@ try {
   for (const width of [1440, 390]) {
     const page = await browser.newPage({ viewport: { width, height: 940 } });
     const errors = [];
+    const contentApiRequests = [];
+    page.on('request', (request) => {
+      if (/\/api\/(works|site-covers)(?:[/?]|$)/.test(new URL(request.url()).pathname)) contentApiRequests.push(request.url());
+    });
     page.on('pageerror', (error) => errors.push(error.message));
     const openNav = async (name) => {
       if (width < 993) {
@@ -70,7 +74,48 @@ try {
     await expect(page).toHaveURL(/\/posts\/?$/);
     await expect(page.locator('.post-item-card').first()).toBeVisible();
     await expect(page.locator('[data-post-navigation] a')).toHaveCount(4);
-    await page.locator('.post-item-card a:has(h2)').first().click();
+    const firstCard = page.locator('.post-item-card').first();
+    await firstCard.scrollIntoViewIfNeeded();
+    const artwork = await firstCard.evaluate((card) => {
+      const cover = card.querySelector('.post-item-cover');
+      const image = cover.querySelector('.post-cover-image');
+      const coverBox = cover.getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
+      return {
+        source: card.dataset.coverSource,
+        src: image.getAttribute('src'),
+        objectFit: getComputedStyle(image).objectFit,
+        clipPath: getComputedStyle(cover).clipPath,
+        coverWidth: coverBox.width,
+        cardWidth: cardBox.width,
+        ratio: coverBox.width / coverBox.height,
+        backdropCount: card.querySelectorAll('.post-cover-backdrop').length,
+      };
+    });
+    assert.ok(['manual', 'work', 'pool'].includes(artwork.source));
+    assert.ok(artwork.src);
+    assert.ok(Math.abs(artwork.coverWidth - artwork.cardWidth) < 3, 'Cover spans the full card width');
+    assert.ok(artwork.ratio >= 1.98, 'Article artwork is a shallow horizontal banner');
+    assert.equal(artwork.clipPath, 'none');
+    if (artwork.source === 'work') {
+      assert.equal(artwork.objectFit, 'contain');
+      assert.equal(artwork.backdropCount, 1);
+    }
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+    await page.screenshot({ path: `${output}/article-covers-${width}.png`, fullPage: true });
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('.post-item-card .post-cover-image').first()).toHaveAttribute('src', artwork.src);
+    const nextPage = page.locator('.paginator a[href$="/2"]').first();
+    if (await nextPage.count()) {
+      await nextPage.click();
+      await expect(page).toHaveURL(/\/posts\/2\/?$/);
+      await expect(page.locator('.post-item-card').first()).toBeVisible();
+      await page.goto(`${base}/posts`, { waitUntil: 'networkidle' });
+      await expect(page.locator('.post-item-card .post-cover-image').first()).toHaveAttribute('src', artwork.src);
+    }
+    const titleLink = page.locator('.post-item-card a:has(h2)').first();
+    await titleLink.focus();
+    await titleLink.press('Enter');
     await expect(page).toHaveURL(/\/post\//);
     await expect(page.locator('.custom-content')).toBeVisible();
     assert.ok((await page.locator('.custom-content').innerText()).trim().length > 80);
@@ -100,9 +145,12 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await page.screenshot({ path: `${output}/after-${width}.png`, fullPage: true });
     assert.deepEqual(errors, []);
+    assert.deepEqual(contentApiRequests, []);
     results.push({
       width,
       articleBodyVisible: true,
+      horizontalArticleCover: artwork,
+      contentApiRequests: 0,
       categoryPostsVisible: true,
       projectCount: projects.length,
       horizontalOverflow: false,
@@ -110,6 +158,13 @@ try {
     });
     await page.close();
   }
+  const noScript = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 390, height: 940 } });
+  await noScript.goto(`${base}/posts`, { waitUntil: 'networkidle' });
+  await expect(noScript.locator('.post-item-card').first()).toBeVisible();
+  await expect(noScript.locator('.post-item-card .post-cover-image').first()).toBeVisible();
+  await noScript.locator('.post-item-card a:has(h2)').first().click();
+  await expect(noScript.locator('.custom-content')).toBeVisible();
+  await noScript.close();
   const page = await browser.newPage();
   for (const locale of ['en', 'ja', 'ko']) {
     const response = await page.goto(`${base}/${locale}/projects/`);
@@ -117,7 +172,10 @@ try {
     await expect(page.locator('[data-project-slug]')).toHaveCount(projects.length);
   }
   await page.close();
-  await writeFile(`${output}/browser-report.json`, JSON.stringify({ base, results, localizedProjects: true }, null, 2));
+  await writeFile(
+    `${output}/browser-report.json`,
+    JSON.stringify({ base, results, localizedProjects: true, noScriptArticleCards: true }, null, 2),
+  );
   console.log(JSON.stringify({ passed: true, widths: results.map((row) => row.width), projectCount: projects.length }));
 } finally {
   await browser?.close();

@@ -77,6 +77,10 @@ export interface PostCardData {
   description?: string;
   date: Date;
   cover?: string;
+  /** Derived association metadata for build-time artwork selection. */
+  payloadId?: number;
+  payloadIds?: number[];
+  works?: string[];
   tags?: string[];
   categories?: string[] | string[][];
   draft?: boolean;

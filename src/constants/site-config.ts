@@ -35,6 +35,7 @@ import yamlConfig from '../../config/site.yaml';
 import { DEFAULT_ROUTERS, RESERVED_ROUTES } from './router';
 
 export { contentConfig, editorConfig, i18nConfig, motionConfig, siteConfig };
+export { defaultCoverList } from '@lib/config/site';
 
 export const socialConfig: SocialConfig = yamlConfig.social ?? {};
 
@@ -54,9 +55,6 @@ export const seoConfig = {
   keywords: siteConfig?.keywords?.join(',') ?? '',
   url: siteConfig.site,
 };
-
-const BUILT_IN_COVERS = Array.from({ length: 21 }, (_, i) => `/img/cover/${i + 1}.webp`);
-export const defaultCoverList = yamlConfig?.defaultCoverList?.length ? yamlConfig.defaultCoverList : BUILT_IN_COVERS;
 
 // Map YAML comment config
 export const commentConfig: CommentConfig = yamlConfig.comment || {};

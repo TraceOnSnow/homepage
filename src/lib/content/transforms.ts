@@ -24,6 +24,9 @@ export type PostFieldMap = {
   title: string;
   date: Date;
   cover: string | undefined;
+  payloadId: number | undefined;
+  payloadIds: number[] | undefined;
+  works: string[] | undefined;
   tags: string[] | undefined;
   categories: string[] | string[][] | undefined;
   draft: boolean | undefined;
@@ -47,6 +50,9 @@ const fieldExtractors: { [K in keyof PostFieldMap]: (post: BlogPost, locale: str
   title: (p) => p.data.title,
   date: (p) => p.data.date,
   cover: (p) => p.data?.cover,
+  payloadId: (p) => p.data?.payloadId,
+  payloadIds: (p) => p.data?.payloadIds,
+  works: (p) => p.data?.works,
   tags: (p) => p.data?.tags,
   categories: (p) => p.data?.categories,
   draft: (p) => p.data?.draft,
@@ -105,6 +111,9 @@ const POST_CARD_DATA_KEYS = [
   'description',
   'date',
   'cover',
+  'payloadId',
+  'payloadIds',
+  'works',
   'tags',
   'categories',
   'draft',

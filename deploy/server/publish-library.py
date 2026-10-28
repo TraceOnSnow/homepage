@@ -13,6 +13,7 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -71,6 +72,30 @@ def read_works():
     return docs, hashlib.sha256(json.dumps(docs, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def read_cover_pool():
+    """Read selected public cover settings; only legacy missing routes fall back."""
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:3000/api/site-covers', timeout=20) as response:
+            pool = json.load(response)
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return None
+        raise
+    if not isinstance(pool, dict) or type(pool.get('version')) is not int or pool['version'] != 1:
+        raise ValueError('Invalid cover settings; keeping existing site')
+    covers = pool.get('covers')
+    if (not isinstance(covers, list) or not 0 <= len(covers) <= 250
+            or any(not isinstance(url, str) or len(url) > 4096 for url in covers)):
+        raise ValueError('Invalid cover list; keeping existing site')
+    for url in covers:
+        if url in {'/img/cover/' + str(n) + '.webp' for n in range(1, 22)}:
+            continue
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError('Unsafe cover URL; keeping existing site')
+    return pool
+
+
 def read_content():
     works, digest = read_works()
     posts = []
@@ -97,7 +122,11 @@ def read_content():
         else:
             raise ValueError('Article pagination limit exceeded')
         digest = hashlib.sha256(json.dumps({'works': works, 'posts': posts}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-    return works, posts, digest
+    cover_pool = read_cover_pool() if os.environ.get('CONTENT_SOURCE', 'files') == 'payload' else None
+    if cover_pool is not None:
+        digest = hashlib.sha256(json.dumps({'works': works, 'posts': posts, 'coverPool': cover_pool},
+                                          sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return works, posts, digest, cover_pool
 
 
 class Cards(HTMLParser):
@@ -149,7 +178,7 @@ def run_build(*, env, output):
 def publish(refresh=False):
     """Publish while the caller holds library-publication.lock; return whether it switched."""
     evidence = BASE / 'evidence'
-    docs, posts, digest = read_content()
+    docs, posts, digest, cover_pool = read_content()
     pending_file = evidence / 'library-pending.json'
     published_digest = json.loads(STATE.read_text()).get('digest') if STATE.exists() else None
     if refresh and digest == published_digest:
@@ -164,7 +193,10 @@ def publish(refresh=False):
     build_env['PAYLOAD_URL'] = 'http://127.0.0.1:3000'
     snapshot = evidence / ('content-build-' + stamp + '.json')
     with snapshot.open('x') as output:
-        json.dump({'works': docs, 'posts': posts}, output)
+        content = {'works': docs, 'posts': posts}
+        if cover_pool is not None:
+            content['coverPool'] = cover_pool
+        json.dump(content, output)
     build_env['CONTENT_BUILD_SNAPSHOT'] = str(snapshot)
     print('Building updated Library; log:', log, flush=True)
     # A failed build or worker restart must not trigger a build every minute.
@@ -180,7 +212,7 @@ def publish(refresh=False):
         raise
     finally:
         snapshot.unlink(missing_ok=True)
-    _, _, after = read_content()
+    _, _, after, _ = read_content()
     if after != digest:
         write_json(pending_file, {'digest': after, 'last_change_epoch': time.time()})
         print('Works changed during build; retaining current site and restarting quiet period')

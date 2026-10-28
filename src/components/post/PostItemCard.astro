@@ -5,8 +5,9 @@ import { Badge } from '@components/ui/badge';
 import { Button } from '@components/ui/button';
 import { ScrollableRow } from '@components/ui/ScrollableRow';
 import { Routes } from '@constants/router';
-import { createArticleStatsConfig, defaultCoverList } from '@constants/site-config';
+import { createArticleStatsConfig } from '@constants/site-config';
 import { buildCategoryPath, buildTagPath, getCategoryArr, translateCategoryName } from '@lib/content';
+import type { ArticleCover } from '@lib/covers/data';
 import { displayDate } from '@lib/date';
 import { getLqipProps } from '@lib/lqip';
 import { postTitleMorphName } from '@lib/morph-transitions';
@@ -19,18 +20,16 @@ import type { PostCardData } from '@/types/blog';
 
 export interface PostItemCardProps {
   data: PostCardData;
-  leftClip?: boolean;
-  randomCover: string;
-  isUniformPosition?: boolean; // 是否统一图片位置（非交替模式）
+  artwork: ArticleCover;
 }
 
-const { randomCover, data, leftClip = true, isUniformPosition = false } = Astro.props as PostItemCardProps;
+const { artwork, data } = Astro.props as PostItemCardProps;
 
-const { cover, date, categories, title, draft, description, slug, link, tags, wordCount, readingTime, postLocale, cardMarks } =
+const { date, categories, title, draft, description, slug, link, tags, wordCount, readingTime, postLocale, cardMarks } =
   data ?? {};
 
 const locale = getLocaleFromUrl(Astro.url.pathname);
-const finalCover = cover ?? randomCover ?? defaultCoverList[0];
+const finalCover = artwork.src;
 const href = localizedPath(routeBuilder(Routes.Post, { slug, link, title }), locale);
 const isDraft = import.meta.env.DEV && draft === true;
 const isFallback = postLocale != null && locale !== defaultLocale && postLocale !== locale;
@@ -45,59 +44,43 @@ const postDescription = description ?? '';
 // 获取 LQIP 样式用于图片占位符
 const lqipProps = getLqipProps(finalCover);
 
-// Stagger padding amounts for uniform position mode (following diagonal edge)
-// Only applied when images are on left, where the diagonal faces the content
-const staggerAmounts = ['pl-0', 'pl-2', 'pl-4', 'pl-6'] as const;
-
-/**
- * Get stagger padding class for a content row
- * @param rowIndex - The row index (0-3)
- * @returns Tailwind padding class or empty string
- */
-function getStaggerPadding(rowIndex: number): string {
-  // Only apply stagger for left image position (diagonal faces content)
-  if (!isUniformPosition || !leftClip) return '';
-  return staggerAmounts[rowIndex];
-}
-
 const pageStatsConfig = createArticleStatsConfig(href);
 const titleMorph = postTitleMorphName(slug);
 ---
 
 <div
   class={cn(
-    'group text-card-foreground shadow-card relative flex rounded-lg bg-white md:flex-col dark:bg-card dark:ring-1 dark:ring-white/5',
+    'group text-card-foreground shadow-card relative flex flex-col rounded-lg bg-white dark:bg-card dark:ring-1 dark:ring-white/5',
     'post-item-card motion-reveal',
   )}
+  data-cover-source={artwork.source}
 >
   <a
     href={href}
     tabindex="-1"
     aria-hidden="true"
     style={lqipProps.style}
-    class={cn(
-      'post-item-cover md:clip-path-none relative h-46.5 max-h-46.5 w-[calc(50%-2rem)] overflow-hidden md:w-auto',
-      leftClip ? 'rounded-s-lg clip-path-post-img-left order-1' : 'rounded-e-lg clip-path-post-img-right order-2',
-      'md:clip-path-none md:order-0',
-      lqipProps.class,
-    )}
+    class={cn('post-item-cover relative block w-full overflow-hidden rounded-t-lg', lqipProps.class)}
   >
-    <ResponsiveImage src={finalCover} maxWidth={800} sizes="(max-width: 767px) calc(100vw - 48px), (max-width: 992px) 40vw, 400px" loading="lazy" decoding="async" alt="" class="h-full w-full cursor-pointer object-cover" />
+    {artwork.source === 'work' && (
+      <img src={finalCover} loading="lazy" decoding="async" alt="" class="post-cover-backdrop" aria-hidden="true" />
+    )}
+    <ResponsiveImage
+      src={finalCover}
+      maxWidth={1200}
+      sizes="(max-width: 992px) calc(100vw - 48px), 800px"
+      loading="lazy"
+      decoding="async"
+      alt=""
+      class={cn('post-cover-image h-full w-full', artwork.source === 'work' ? 'object-contain' : 'object-cover')}
+    />
   </a>
   <div
-    class={cn(
-      'flex flex-col gap-2 pb-2 md:pb-4 pt-4 md:pt-1',
-      'px-4 md:px-4',
-      // Reduce margin on the side adjacent to image diagonal when uniform left position
-      isUniformPosition && leftClip && '-ml-3',
-      'w-[calc(50%+2rem)] md:w-full',
-      leftClip ? 'order-2' : 'order-1',
-      'md:order-0',
-    )}
+    class="flex w-full flex-col gap-2 px-4 pt-4 pb-5"
   >
     <ScrollableRow
       client:visible
-      className={cn('w-full', getStaggerPadding(0), 'md:pl-0 md:pr-0')}
+      className="w-full"
       innerClassName="items-center justify-between gap-4 w-full"
       fadeWidth={20}
     >
@@ -152,7 +135,7 @@ const titleMorph = postTitleMorphName(slug);
 
       </div>
     </ScrollableRow>
-    <div class={cn('mt-1 flex flex-col space-y-1.5 p-0', getStaggerPadding(1), 'md:pl-0 md:pr-0')}>
+    <div class="mt-1 flex flex-col space-y-1.5 p-0">
       <div class="flex items-center gap-2">
         <a href={href} class="min-w-0 flex-1 outline-none">
           <h2
@@ -185,8 +168,6 @@ const titleMorph = postTitleMorphName(slug);
     <p
       class={cn(
         'text-muted-foreground line-clamp-3 h-15 text-sm md:h-auto md:max-h-15',
-        getStaggerPadding(2),
-        'md:pl-0 md:pr-0',
       )}
     >
       {postDescription}
@@ -195,13 +176,7 @@ const titleMorph = postTitleMorphName(slug);
       tags?.length && (
         <ScrollableRow
           client:visible
-          className={cn(
-            'pt-1 pb-1',
-            leftClip ? 'mr-18' : 'ml-18',
-            'md:mx-0',
-            getStaggerPadding(3),
-            'md:pl-0 md:pr-0',
-          )}
+          className="pt-1 pr-16 pb-1"
           innerClassName="gap-2"
           fadeWidth={16}
         >
@@ -222,16 +197,13 @@ const titleMorph = postTitleMorphName(slug);
       href={href}
       tabindex="-1"
       aria-hidden="true"
-      class={cn('absolute -bottom-1', leftClip ? '-right-1' : '-left-1', 'md:left-auto md:-right-1')}
+      class="absolute -right-1 -bottom-1"
     >
       <Button
         tabIndex={-1}
         className={cn(
           'post-item-more bg-gradient-shoka-button rounded-2xl transition-[translate,box-shadow] duration-500 ease-out-expo md:h-7 md:px-2 md:py-1 md:text-xs',
-          leftClip
-            ? 'rounded-se-none rounded-es-none group-hover:translate-x-1'
-            : 'rounded-ss-none rounded-ee-none group-hover:-translate-x-1',
-          'md:rounded-ss-2xl md:rounded-se-none md:rounded-ee-2xl md:rounded-es-none md:group-hover:translate-x-1',
+          'rounded-se-none rounded-es-none group-hover:translate-x-1',
         )}
       >
         more...
@@ -243,7 +215,7 @@ const titleMorph = postTitleMorphName(slug);
 <style>
   .post-item-card {
     content-visibility: auto;
-    contain-intrinsic-size: auto 220px;
+    contain-intrinsic-size: auto 480px;
     transition:
       transform var(--dur-slow) var(--ease-out-quart),
       box-shadow var(--dur-slow) var(--ease-out-quart);
@@ -255,13 +227,27 @@ const titleMorph = postTitleMorphName(slug);
   }
 
   .post-item-cover {
-    transition: clip-path 900ms var(--ease-out-expo);
+    aspect-ratio: 2 / 1;
+    max-height: 18rem;
+    isolation: isolate;
+    background: var(--color-card, #20252b);
   }
 
-  .post-item-cover img {
-    transition:
-      scale 900ms var(--ease-out-expo),
-      filter 900ms var(--ease-out-expo);
+  .post-cover-backdrop {
+    position: absolute;
+    inset: -8%;
+    z-index: -1;
+    width: 116%;
+    height: 116%;
+    object-fit: cover;
+    filter: blur(18px) brightness(0.6);
+  }
+
+  .post-cover-image {
+    display: block;
+    position: absolute;
+    inset: 0;
+    transition: filter 900ms var(--ease-out-expo);
   }
 
   @media (hover: hover) {
@@ -278,24 +264,12 @@ const titleMorph = postTitleMorphName(slug);
         0 0.5rem 1.5rem -0.75rem rgb(0 0 0 / 0.5);
     }
 
-    .post-item-card:hover .post-item-cover img {
-      scale: 1.06;
+    .post-item-card:hover .post-cover-image {
       filter: saturate(1.08);
     }
 
     .post-item-card:hover .post-item-more {
       box-shadow: 0 0.4rem 1.1rem -0.3rem rgb(233 84 107 / 0.6);
-    }
-  }
-
-  /* The diagonal edge opens a little on hover (desktop layout only; mobile stacks the cover). */
-  @media (hover: hover) and (width > 768px) {
-    .post-item-card:hover .clip-path-post-img-left {
-      clip-path: polygon(0 0, 95% 0%, 100% 100%, 0% 100%);
-    }
-
-    .post-item-card:hover .clip-path-post-img-right {
-      clip-path: polygon(0 0%, 100% 0%, 100% 100%, 5% 100%);
     }
   }
 

@@ -42,7 +42,7 @@ class PublicationTests(unittest.TestCase):
             self.addCleanup(item.stop)
 
     def tick(self, seconds, digest, build, after=None):
-        responses = [(self.docs, [], digest), (self.docs, [], after or digest)]
+        responses = [(self.docs, [], digest, None), (self.docs, [], after or digest, None)]
         with patch.object(publisher.time, 'time', return_value=10000 + seconds), \
              patch.object(publisher, 'read_content', side_effect=responses), \
              patch.object(publisher, 'run_build', build):
@@ -110,7 +110,8 @@ class PublicationTests(unittest.TestCase):
 
     def test_unlinked_article_edits_join_the_same_digest(self):
         with patch.dict(os.environ, {'CONTENT_SOURCE': 'payload', 'CONTENT_BUILD_TOKEN': 'test-build-token-at-least-32-characters'}), \
-             patch.object(publisher, 'read_works', return_value=(self.docs, 'same-works')):
+             patch.object(publisher, 'read_works', return_value=(self.docs, 'same-works')), \
+             patch.object(publisher, 'read_cover_pool', return_value=None):
             def read(markdown):
                 body = json.dumps({'docs': [{'id': 1, '_status': 'published', 'markdown': markdown}], 'hasNextPage': False}).encode()
                 with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(body)):
@@ -118,10 +119,56 @@ class PublicationTests(unittest.TestCase):
             self.assertNotEqual(read('original'), read('edited'))
             self.assertNotEqual(read('original'), read(''))
 
+    def test_cover_pool_changes_and_media_replacement_join_the_content_digest(self):
+        with patch.dict(os.environ, {'CONTENT_SOURCE': 'payload', 'CONTENT_BUILD_TOKEN': 'test-build-token-at-least-32-characters'}), \
+             patch.object(publisher, 'read_works', return_value=(self.docs, 'same-works')):
+            def read(pool):
+                body = json.dumps({'docs': [], 'hasNextPage': False}).encode()
+                with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(body)), \
+                     patch.object(publisher, 'read_cover_pool', return_value=pool):
+                    result = publisher.read_content()
+                    self.assertEqual(result[3], pool)
+                    return result[2]
+            first = {'version': 1, 'covers': ['https://example.test/a.webp'], 'images': [{'id': 1, 'updatedAt': 'one'}]}
+            replaced = {**first, 'images': [{'id': 1, 'updatedAt': 'two'}]}
+            self.assertNotEqual(read(first), read(replaced))
+            self.assertNotEqual(read(first), read({'version': 1, 'covers': ['/img/cover/1.webp']}))
+
+    def test_cover_api_fails_closed_except_legacy_missing_route(self):
+        error = publisher.urllib.error.HTTPError('http://localhost/api/site-covers', 404, 'Missing', None, None)
+        with patch.object(publisher.urllib.request, 'urlopen', side_effect=error):
+            self.assertIsNone(publisher.read_cover_pool())
+        error.code = 500
+        with patch.object(publisher.urllib.request, 'urlopen', side_effect=error):
+            with self.assertRaises(publisher.urllib.error.HTTPError):
+                publisher.read_cover_pool()
+        for covers in [['javascript:alert(1)'], ['https://owner:secret@example.test/a.webp']]:
+            with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps({'version': 1, 'covers': covers}).encode())):
+                with self.assertRaises(ValueError):
+                    publisher.read_cover_pool()
+
+    def test_deleted_pool_images_keep_settings_and_allow_frontend_default_fallback(self):
+        pool = {'version': 1, 'covers': [], 'includeBuiltIn': False, 'mediaIds': [9], 'images': []}
+        with patch.object(publisher.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps(pool).encode())):
+            self.assertEqual(publisher.read_cover_pool(), pool)
+
+    def test_cover_pool_is_frozen_for_the_production_build(self):
+        pool = {'version': 1, 'covers': ['/img/cover/3.webp']}
+        with patch.object(publisher, 'read_content', return_value=(self.docs, [], 'pool-change', pool)), \
+             patch.object(publisher.time, 'time', return_value=10000):
+            publisher.main()
+        def build(*, env, output):
+            content = json.loads(Path(env['CONTENT_BUILD_SNAPSHOT']).read_text())
+            self.assertEqual(content['coverPool'], pool)
+        with patch.object(publisher, 'read_content', return_value=(self.docs, [], 'pool-change', pool)), \
+             patch.object(publisher.time, 'time', return_value=10180), \
+             patch.object(publisher, 'run_build', side_effect=build):
+            self.assertTrue(publisher.main())
+
     def test_failure_retry_starts_when_a_long_build_finishes(self):
         now = [10000.0]
         with patch.object(publisher.time, 'time', side_effect=lambda: now[0]), \
-             patch.object(publisher, 'read_content', return_value=(self.docs, [], 'changed')):
+             patch.object(publisher, 'read_content', return_value=(self.docs, [], 'changed', None)):
             publisher.main()
             now[0] += 180
             def fail(*args, **kwargs):
@@ -134,7 +181,7 @@ class PublicationTests(unittest.TestCase):
             self.assertFalse(list((self.base / 'evidence').glob('content-build-*.json')))
 
     def test_code_refresh_publishes_unchanged_content_without_a_new_quiet_period(self):
-        with patch.object(publisher, 'read_content', return_value=(self.docs, [], 'published')), \
+        with patch.object(publisher, 'read_content', return_value=(self.docs, [], 'published', None)), \
              patch.object(publisher, 'run_build') as build:
             self.assertTrue(publisher.main(refresh=True))
             self.assertEqual(build.call_count, 1)

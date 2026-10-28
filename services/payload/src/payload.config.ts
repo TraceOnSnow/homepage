@@ -14,6 +14,7 @@ import { Works } from './collections/Works'
 import { Posts } from './collections/Posts'
 import { ContentClients } from './collections/ContentClients'
 import { contentEndpoint } from './lib/content-endpoint'
+import { coverPoolEndpoints } from './lib/cover-pool-endpoint'
 import { libraryAgentEndpoint } from './lib/library-agent'
 import { metadataEndpoints } from './lib/metadata/endpoint'
 
@@ -24,8 +25,11 @@ export default buildConfig({
   serverURL: process.env.SERVER_URL || 'http://localhost:3000',
   i18n: { supportedLanguages: { en, zh }, fallbackLanguage: 'zh' },
   admin: { user: 'users', importMap: { baseDir: dirname }, components: {
-    afterNavLinks: ['/components/admin/WorksTableNav#WorksTableNav'],
-    views: { worksTable: { Component: '/components/admin/WorksTableView#WorksTableView', path: '/works-table', exact: true } },
+    afterNavLinks: ['/components/admin/WorksTableNav#WorksTableNav', '/components/admin/CoverPoolNav#CoverPoolNav'],
+    views: {
+      worksTable: { Component: '/components/admin/WorksTableView#WorksTableView', path: '/works-table', exact: true },
+      coverPool: { Component: '/components/admin/CoverPoolView#CoverPoolView', path: '/site-covers', exact: true },
+    },
   } },
   collections: [Users, Works, Media, Posts, ContentClients],
   editor: lexicalEditor(), sharp,
@@ -45,5 +49,5 @@ export default buildConfig({
   }),
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   upload: { limits: { fileSize: 10_000_000 } },
-  endpoints: [...metadataEndpoints, contentEndpoint, libraryAgentEndpoint],
+  endpoints: [...metadataEndpoints, ...coverPoolEndpoints, contentEndpoint, libraryAgentEndpoint],
 })
