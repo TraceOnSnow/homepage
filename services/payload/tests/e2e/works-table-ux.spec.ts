@@ -77,7 +77,7 @@ test('Works table protects hidden edits, reports partial saves, supports keyboar
   expect((await persisted.json()).rating).toBe(6)
 
   const badRow = page.locator(`tr[data-work-id="${invalid.id}"]`)
-  await badRow.getByLabel('UX needs correction评分').fill('11')
+  await badRow.getByLabel('UX needs correction评分').fill('101')
   await row.getByLabel('UX keyboard work评分').fill('7')
   let releaseSave: () => void = () => {}
   const gate = new Promise<void>(resolve => { releaseSave = resolve })
