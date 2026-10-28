@@ -54,7 +54,9 @@ export function workTablePublicationBlock(latest: TableWork, published: TableWor
 /** Only already-public cards qualify; never expose private or never-published drafts. */
 export function hasPublicWorkTableUpdate(latest: TableWork, published: TableWork): boolean {
   return published._status === 'published' && published.visibility === 'public' && latest.visibility === 'public'
-    && ['rating', 'status', 'note', 'article', 'experiences'].some(key => !sameWorkField(latest[key as keyof Work], published[key as keyof Work]))
+    // Compare what the table edits/displays: null and empty notes are equivalent,
+    // and generated array IDs are not a change to the public card.
+    && isWorkDirty(published, workValues(latest))
 }
 
 export function workValues(work: TableWork): WorkValues {

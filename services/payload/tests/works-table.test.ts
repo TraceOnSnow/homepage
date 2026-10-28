@@ -233,6 +233,23 @@ test('bulk publication targets all already-public card updates and refuses unsav
   for (const id of [2, 3, 4, 5, 6]) assert.equal(apis.get(id)!.calls.some(call => call.method === 'PATCH'), false)
 })
 
+test('public update count compares table values rather than empty-note storage or generated row IDs', async () => {
+  // Native form clearing stores an empty string while the published note can be null.
+  // This fixture mirrors the shared browser workflow's already-public linked work.
+  const base = { ...structuredClone(published), note: null, experiences: [] }
+  const equivalent = { ...structuredClone(base), _status: 'draft' as const, note: '',
+    experiences: [{ id: 'generated-empty-row', startedOn: null, endedOn: null }] }
+  assert.equal(hasPublicWorkTableUpdate(equivalent, base), false)
+  const api = apiFixture(equivalent, base)
+  const result = await publishTableUpdates([{ base: equivalent, publishedBase: base, values: workValues(equivalent) }], () => {}, () => {}, api.request)
+  assert.deepEqual(result, { done: 0, total: 0, success: 0, failed: 0 })
+  assert.equal(api.calls.length, 0)
+  assert.equal(hasPublicWorkTableUpdate({ ...equivalent, note: 'A changed reaction' }, base), true)
+  assert.equal(hasPublicWorkTableUpdate({ ...equivalent, rating: 85 }, base), true)
+  assert.equal(hasPublicWorkTableUpdate({ ...equivalent, experiences: [{ endedOn: '2026-10' }] }, base), true)
+  assert.equal(hasPublicWorkTableUpdate({ ...equivalent, rating: null }, { ...base, rating: 0 }), true)
+})
+
 test('ambiguous writes reconcile persisted fields once without retrying the mutation', async () => {
   for (const committed of [true, false]) {
     const api = apiFixture()
