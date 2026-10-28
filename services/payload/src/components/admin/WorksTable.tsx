@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useDocumentDrawer } from '@payloadcms/ui'
 import { workTypes } from '@/lib/metadata/types'
 import { dictionaries } from '@/lib/ui/dictionary'
-import { finishedSortValue, isWorkDirty, matchesWorkTableFilters, shouldConfirmWorkNavigation, workPublicationLabel, workValues, type TableWork, type WorkValues } from '@/lib/works-table'
+import { finishedSortValue, hasPublicWorkTableUpdate, isWorkDirty, matchesWorkTableFilters, shouldConfirmWorkNavigation, workPublicationLabel, workTablePublicationBlock, workValues, type TableWork, type WorkValues } from '@/lib/works-table'
 import { ArticleCell, type ArticleSummary } from './ArticleCell'
 import { AddWorkDialog } from './AddWorkDialog'
-import { readTableWork, saveTableDrafts, tableDocuments, tableRequest, writeTableWork, type TableSaveProgress } from './works-table-api'
+import { publishTableUpdates, readTableWork, saveTableWorks, tableDocuments, tableRequest, writeTableWork, type TableSaveProgress } from './works-table-api'
 import './works-table.css'
 
 type Row = { base: TableWork; publishedBase: TableWork; values: WorkValues; error?: string; saved?: string }
@@ -32,6 +32,7 @@ export function WorksTable() {
   const table = useRef<HTMLDivElement>(null)
   const writing = useRef(false)
   const dirtyCount = rows.filter(row => isWorkDirty(row.base, row.values)).length
+  const pendingCount = rows.filter(row => hasPublicWorkTableUpdate(row.base, row.publishedBase)).length
   const errorCount = rows.filter(row => row.error).length
 
   async function load() {
@@ -89,7 +90,7 @@ export function WorksTable() {
   }
   function added(work: TableWork) {
     void mergeWork(work); setQuery(work.title); setType(''); setStatus(''); setMissing(''); setAttention(''); setPage(1)
-    setMessage(`已定位作品：${work.title}。可继续保存草稿；需要上站时再主动发布。`)
+    setMessage(`已定位作品：${work.title}。表格保存会按所选可见性同步作品；私密记录仍保持私密。`)
   }
 
   async function save(ids?: number[]) {
@@ -97,12 +98,25 @@ export function WorksTable() {
     writing.current = true
     setBusy(true)
     try {
-      const result = await saveTableDrafts(ids ? rows.filter(row => ids.includes(row.base.id)) : rows, result => {
+      const result = await saveTableWorks(ids ? rows.filter(row => ids.includes(row.base.id)) : rows, result => {
         setRows(current => current.map(item => item.base.id !== result.id ? item : result.saved
-          ? { ...rowFor(result.saved.latest, result.saved.publishedBase), saved: '已保存草稿' } : { ...item, error: result.error }))
+          ? { ...rowFor(result.saved.latest, result.saved.publishedBase), saved: result.saved.latest.visibility === 'public' ? '已保存并同步，等待网站更新' : '已保存并同步（私密）' } : { ...item, error: result.error }))
       }, setProgress)
-      setMessage(`草稿保存成功 ${result.success} 条，未保存 ${result.failed} 条。${result.failed ? '失败行的输入已保留，可点击“查看失败”核对并单独重试。' : '现有公开版本继续保留；主动发布后网站才会更新。'}`)
+      setMessage(`保存成功 ${result.success} 条，未保存 ${result.failed} 条。${result.failed ? '失败行的输入已保留，可点击“查看失败”核对并单独重试。' : '已按所选可见性同步；公开作品将在停止编辑约 3 分钟并完成构建后更新网站。'}`)
     } finally { writing.current = false; setProgress(undefined); setBusy(false) }
+  }
+
+  async function publishAll() {
+    if (writing.current || dirtyCount) return
+    writing.current = true; setBusy(true)
+    try {
+      const result = await publishTableUpdates(rows, result => {
+        setRows(current => current.map(item => item.base.id !== result.id ? item : result.saved
+          ? { ...rowFor(result.saved.latest, result.saved.publishedBase), saved: '已发布，等待网站更新' } : { ...item, error: result.error }))
+      }, setProgress)
+      setMessage(`作品更新发布成功 ${result.success} 条，未发布 ${result.failed} 条。${result.failed ? '请查看失败行提示；其他草稿与输入已保留。' : '停止编辑约 3 分钟并完成构建后更新网站。'}`)
+    } catch (error) { setMessage((error as Error).message) }
+    finally { writing.current = false; setProgress(undefined); setBusy(false) }
   }
 
   async function publication(row: Row, action: 'publish' | 'unpublish') {
@@ -150,15 +164,17 @@ export function WorksTable() {
       <button type="button" disabled={busy} onClick={() => setAdding('planned')}>加入待体验</button>
     </div>
     <div className="works-table__savebar" role="region" aria-label="作品保存操作">
-      <button type="button" title="Ctrl / ⌘ S：保存表格草稿" disabled={busy || !dirtyCount} onClick={() => void save()}>保存草稿（{dirtyCount}）</button>
+      <button type="button" title="Ctrl / ⌘ S：保存全部并同步" disabled={busy || !dirtyCount} onClick={() => void save()}>保存全部并同步（{dirtyCount}）</button>
+      <button type="button" disabled={busy || Boolean(dirtyCount) || !pendingCount} onClick={() => void publishAll()}>发布全部作品更新（{pendingCount}）</button>
       <button type="button" disabled={busy || Boolean(dirtyCount)} onClick={() => void load()}>刷新列表</button>
       {hiddenDirty > 0 && <button type="button" onClick={() => clearFilters('dirty')}>查看未保存（{hiddenDirty} 条不在本页）</button>}
       {errorCount > 0 && <button type="button" onClick={() => clearFilters('errors')}>查看失败（{errorCount}）</button>}
-      <span aria-live="polite">{progress ? `正在保存 ${progress.done} / ${progress.total} 条${progress.title ? `：${progress.title}` : ''}` : busy ? '正在核对作品状态…' : dirtyCount ? '包括其他页的修改；保存不会发布。' : loadError ? '列表读取尚未完成' : '当前输入已保存'}</span>
+      <span aria-live="polite">{progress ? `正在保存 ${progress.done} / ${progress.total} 条${progress.title ? `：${progress.title}` : ''}` : busy ? '正在核对作品状态…' : dirtyCount ? '包括其他页的修改；按所选可见性保存并同步。' : loadError ? '列表读取尚未完成' : '当前输入已保存'}</span>
     </div>
+    {dirtyCount > 0 && pendingCount > 0 && <p className="works-table__muted">请先“保存全部并同步”处理 {dirtyCount} 条未保存输入，再发布其余已保存作品更新。</p>}
     <p role="status" aria-live="polite">{message}</p>
     {loadError && <p role="alert">{loadError} <button type="button" disabled={busy || Boolean(dirtyCount)} onClick={() => void load()}>重新读取列表</button></p>}
-    <p className="works-table__muted">保存草稿保留网站旧版本。每行主动发布后，按所选可见性更新；下架保留草稿和历史。关联文章有独立发布状态，保存作品不会发布文章。短感受留空时使用文章标题。</p>
+    <p className="works-table__muted">保存并同步会发布作品卡片更新，私密记录仍保持私密。公开作品将在停止编辑约 3 分钟并完成构建后更新网站。“发布全部作品更新”覆盖全部分页与筛选外的已公开作品，仅处理已保存的卡片字段更新；私密及从未公开的作品不在范围内。草稿另有标题、封面等修改时会阻止该行同步，请到详情核对。关联文章独立发布，作品保存不会公开文章或私人正文。下架保留草稿和历史。短感受留空时使用文章标题。</p>
     <div className="works-table__scroll" role="region" aria-label="作品编辑表格" aria-busy={busy} tabIndex={0}>
       <table><caption>全部作品及个人记录，共 {rows.length} 条；当前筛选 {visible.length} 条</caption>
         <thead><tr>{['作品', '状态', '个人评分（满分100）', '开始时间', '结束时间', '短感受', '关联笔记', '发布时可见性', '草稿与发布'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
@@ -187,16 +203,17 @@ function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, on
 }) {
   const { base: work, values } = row
   const dirty = isWorkDirty(work, values)
+  const publicationBlocked = workTablePublicationBlock(work, row.publishedBase)
   const article = values.article ? articles[values.article] : undefined
   const [Drawer, , drawer] = useDocumentDrawer({ collectionSlug: 'works', id: work.id })
   return <tr data-work-id={work.id} className={row.error ? 'works-table__error' : dirty ? 'works-table__dirty' : undefined}>
-    <td data-label="作品"><a href={`/admin/collections/works/${work.id}`} aria-disabled={disabled || dirty} title={dirty ? '请先保存本行草稿，再打开详情' : '打开作品详情'} onClick={event => {
+    <td data-label="作品"><a href={`/admin/collections/works/${work.id}`} aria-disabled={disabled || dirty} title={dirty ? '请先保存并同步本行，再打开详情' : '打开作品详情'} onClick={event => {
       if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return
       event.preventDefault(); if (!disabled && !dirty) drawer.openDrawer()
     }}>
       {work.coverUrl && <img className="works-table__cover" src={work.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />}{work.title}</a>
       <small>{dictionaries.zh[work.type]}{(work.experiences?.length || 0) > 1 ? ` · ${work.experiences!.length} 次体验` : ''}</small>
-      {dirty && <small>请先保存本行草稿，再打开详情</small>}
+      {dirty && <small>请先保存并同步本行，再打开详情</small>}
       <Drawer redirectAfterDuplicate={false} redirectAfterDelete={false} onDelete={() => { onRemove(); drawer.closeDrawer() }}
         onDuplicate={async ({ doc }) => { onWork(await tableRequest<TableWork>(`works/${doc.id}?depth=0&draft=true`)); drawer.closeDrawer() }}
         onSave={async () => { const saved = await tableRequest<TableWork>(`works/${work.id}?depth=0&draft=true`); onWork(saved); drawer.closeDrawer() }} />
@@ -208,10 +225,10 @@ function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, on
     <td data-label="短感受"><textarea aria-label={`${work.title}短感受`} rows={2} value={values.note} placeholder={article?.title || ''} disabled={disabled} onChange={event => onChange({ note: event.target.value })} /></td>
     <td data-label="关联笔记"><ArticleCell title={work.title} articleID={values.article} article={article} disabled={disabled} onArticle={onArticle} onChange={article => onChange({ article })} /></td>
     <td data-label="发布时可见性"><select aria-label={`${work.title}可见性`} value={values.visibility} disabled={disabled} onChange={event => onChange({ visibility: event.target.value })}><option value="private">私密</option><option value="public">公开</option></select></td>
-    <td data-label="草稿与发布"><strong>{workPublicationLabel(work, row.publishedBase)}</strong><small role={row.error ? 'alert' : undefined}>{row.error || (isWorkDirty(work, values) ? '有未保存修改，请先保存草稿' : row.saved || '所有输入已保存')}</small>
+    <td data-label="草稿与发布"><strong>{workPublicationLabel(work, row.publishedBase)}</strong><small role={row.error ? 'alert' : undefined}>{row.error || (isWorkDirty(work, values) ? '有未保存修改，请先保存并同步' : row.saved || '所有输入已保存')}</small>
       <div className="works-table__actions">
-        {isWorkDirty(work, values) && <button type="button" aria-label={`${work.title}保存本行草稿`} disabled={disabled} onClick={onSave}>保存本行草稿</button>}
-        <button type="button" aria-label={`${work.title}发布`} disabled={disabled || Boolean(row.error) || isWorkDirty(work, values) || work._status === 'published'} onClick={onPublish}>{values.visibility === 'public' ? '发布到网站' : '发布（私密）'}</button>
+        {isWorkDirty(work, values) && <button type="button" aria-label={`${work.title}保存并同步`} disabled={disabled} onClick={onSave}>保存并同步</button>}
+        <button type="button" aria-label={`${work.title}发布`} disabled={disabled || (Boolean(row.error) && row.error !== publicationBlocked) || isWorkDirty(work, values) || work._status === 'published'} onClick={onPublish}>{values.visibility === 'public' ? '发布到网站' : '发布（私密）'}</button>
         {row.publishedBase._status === 'published' && <button type="button" aria-label={`${work.title}下架`} disabled={disabled || Boolean(row.error) || isWorkDirty(work, values)} onClick={onUnpublish}>下架</button>}
         {row.error && <button type="button" disabled={disabled} onClick={onReset}>重新读取本行</button>}
       </div>

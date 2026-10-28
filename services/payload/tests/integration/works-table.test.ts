@@ -6,7 +6,7 @@ import test from 'node:test'
 import type { Payload } from 'payload'
 import type { SQLiteAdapter } from '@payloadcms/db-sqlite'
 import { workPatch, workValues, type TableWork } from '../../src/lib/works-table'
-import { readTableWork, writeTableWork, type tableRequest } from '../../src/components/admin/works-table-api'
+import { publishTableUpdates, readTableWork, writeTableWork, type tableRequest } from '../../src/components/admin/works-table-api'
 
 test('migrated Works table retains partial dates and independently saves/publishes/withdraws drafts', async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'homepage-works-table-'))
@@ -71,6 +71,33 @@ test('migrated Works table retains partial dates and independently saves/publish
     versions = await writeTableWork('publish', versions.latest, versions.publishedBase, {}, api)
     assert.equal(versions.publishedBase.note, 'Latest selected reaction')
     assert.equal(versions.publishedBase._status, 'published')
+    versions = await writeTableWork('save-sync', versions.latest, versions.publishedBase,
+      workPatch(versions.latest, { ...workValues(versions.latest), rating: '85', endedOn: '2026-10' }), api)
+    assert.equal(versions.latest.rating, 85)
+    assert.equal(versions.publishedBase.rating, 85)
+    assert.equal(versions.publishedBase.experiences![0].endedOn, '2026-10')
+    const publicRead = () => handleEndpoints({ config, request: new Request(`http://127.0.0.1:3321/api/works/${publicWork.id}?draft=false`) })
+    assert.equal((await (await publicRead()).json()).rating, 85)
+    versions = await writeTableWork('save-draft', versions.latest, versions.publishedBase, { rating: 90 }, api)
+    const rows = [{ base: versions.latest, publishedBase: versions.publishedBase, values: workValues(versions.latest) }]
+    const summary = await publishTableUpdates(rows, result => {
+      assert.ok(result.saved)
+      versions = result.saved!
+    }, () => {}, api)
+    assert.equal(summary.success, 1)
+    assert.equal((await (await publicRead()).json()).rating, 90)
+    versions = await writeTableWork('save-sync', versions.latest, versions.publishedBase, { visibility: 'private' }, api)
+    assert.equal(versions.publishedBase.visibility, 'private')
+    assert.equal((await publicRead()).status, 404)
+    versions = await writeTableWork('save-sync', versions.latest, versions.publishedBase, { visibility: 'public' }, api)
+    assert.equal((await publicRead()).status, 200)
+    versions = await writeTableWork('save-draft', versions.latest, versions.publishedBase, { title: 'Unreviewed title', rating: 99 }, api)
+    await assert.rejects(writeTableWork('save-sync', versions.latest, versions.publishedBase, { rating: 98 }, api), /非表格修改/)
+    assert.equal((await (await publicRead()).json()).title, 'Public stable version')
+    assert.equal((await readTableWork(publicWork.id, api)).latest.title, 'Unreviewed title')
+    // Native detail publication is the explicit review route for unrelated edits.
+    await request(`works/${publicWork.id}?draft=false`, 'PATCH', { ...versions.latest, _status: 'published' })
+    versions = await readTableWork(publicWork.id, api)
     versions = await writeTableWork('save-draft', versions.latest, versions.publishedBase, { note: 'Retain on withdrawal' }, api)
     versions = await writeTableWork('unpublish', versions.latest, versions.publishedBase, {}, api)
     assert.equal(versions.latest.note, 'Retain on withdrawal')

@@ -25,6 +25,38 @@ export function workPublicationData(work: TableWork): Partial<Work> {
   return Object.fromEntries(fields.filter(key => work[key] !== undefined).map(key => [key, work[key]]))
 }
 
+/** Compare persisted values independently of object key order. */
+export function sameWorkField(left: unknown, right: unknown): boolean {
+  const ordered = (value: unknown): unknown => Array.isArray(value) ? value.map(ordered)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, ordered(item)]))
+      : value ?? null
+  return JSON.stringify(ordered(left)) === JSON.stringify(ordered(right))
+}
+
+/** Quick synchronization excludes unrelated edits left in a drawer. */
+export function workTablePublicationBlock(latest: TableWork, published: TableWork): string | undefined {
+  if (published._status !== 'published') return
+  const personal = new Set(['rating', 'status', 'note', 'article', 'visibility', 'experiences'])
+  const latestData = workPublicationData(latest)
+  const baseData = workPublicationData(published)
+  const changed = Object.keys({ ...baseData, ...latestData }).filter(key => !personal.has(key)
+    && !sameWorkField(latestData[key as keyof Work], baseData[key as keyof Work]))
+  const hiddenExperiences = (work: TableWork) => (work.experiences || []).map((row, index, all) => {
+    const hidden = { ...row }
+    delete hidden.id
+    if (index === all.length - 1) { delete hidden.startedOn; delete hidden.endedOn }
+    return hidden
+  }).filter(row => Object.values(row).some(value => value !== null && value !== undefined && value !== ''))
+  if (!sameWorkField(hiddenExperiences(latest), hiddenExperiences(published))) changed.push('体验补充记录')
+  return changed.length ? `草稿还含非表格修改（${changed.join('、')}）。为避免一并发布，本行未同步；请核对完整草稿后使用本行发布或到详情发布，再重新读取本行。` : undefined
+}
+
+/** Only already-public cards qualify; never expose private or never-published drafts. */
+export function hasPublicWorkTableUpdate(latest: TableWork, published: TableWork): boolean {
+  return published._status === 'published' && published.visibility === 'public' && latest.visibility === 'public'
+    && ['rating', 'status', 'note', 'article', 'experiences'].some(key => !sameWorkField(latest[key as keyof Work], published[key as keyof Work]))
+}
+
 export function workValues(work: TableWork): WorkValues {
   const last = work.experiences?.at(-1)
   return {

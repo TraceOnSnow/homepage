@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { experienceDateInput, isExperienceDate } from '../src/lib/experience'
-import { matchesWorkTableFilters, shouldConfirmWorkNavigation, workPatch, workPublicationData, workPublicationLabel, workValues, type TableWork } from '../src/lib/works-table'
-import { saveTableDrafts, writeTableWork, type TableSaveProgress, type TableSaveResult, type tableRequest } from '../src/components/admin/works-table-api'
+import { hasPublicWorkTableUpdate, matchesWorkTableFilters, shouldConfirmWorkNavigation, workPatch, workPublicationData, workPublicationLabel, workTablePublicationBlock, workValues, type TableWork } from '../src/lib/works-table'
+import { publishTableUpdates, saveTableWorks, writeTableWork, type TableSaveProgress, type TableSaveResult, type tableRequest } from '../src/components/admin/works-table-api'
 
 test('experience dates preserve precision, validate leap years, and display legacy timestamps without rewriting', () => {
   for (const date of [null, '', '2020', '2020-02', '2020-02-29', '2020-02-28T16:00:00.000Z']) assert.equal(isExperienceDate(date), true)
@@ -154,14 +154,14 @@ test('batch save reports serial observed progress, keeps failed inputs, and cont
     const id = Number(url.pathname.match(/works\/(\d+)/)?.[1] || url.searchParams.get('where[and][0][id][equals]'))
     return apis.get(id)!.request<T>(route, method, data)
   }
-  const result = await saveTableDrafts(rows, event => resultEvents.push(event), value => progress.push(value), request)
+  const result = await saveTableWorks(rows, event => resultEvents.push(event), value => progress.push(value), request)
   assert.deepEqual(result, { total: 3, done: 3, success: 1, failed: 2 })
   assert.deepEqual(rows, before, 'inputs and reviewed baselines are never modified by the save helper')
   assert.deepEqual(resultEvents.map(event => [event.id, Boolean(event.saved)]), [[9, false], [10, false], [11, true]])
   assert.match(resultEvents[0].error!, /其他操作更新/)
   assert.match(resultEvents[1].error!, /评分/)
   assert.equal(resultEvents[2].saved!.publishedBase._status, 'published')
-  assert.equal(resultEvents[2].saved!.latest._status, 'draft')
+  assert.equal(resultEvents[2].saved!.latest._status, 'published')
   assert.deepEqual(progress.map(value => value.done), [0, 1, 1, 2, 2, 3])
   for (const id of [9, 10, 12]) assert.equal(apis.get(id)!.calls.some(call => call.method === 'PATCH'), false)
   assert.equal(apis.get(11)!.calls.filter(call => call.method === 'PATCH').length, 1)
@@ -171,4 +171,90 @@ test('batch save reports serial observed progress, keeps failed inputs, and cont
 test('hundred-point table input preserves explicit scores and decimal legacy precision', () => {
   for (const rating of ['0', '85', '100', '83.75', '8.5']) assert.equal(workPatch(published, { ...workValues(published), rating }).rating ?? 0, Number(rating))
   for (const rating of ['-1', '100.1', 'bad']) assert.throws(() => workPatch(published, { ...workValues(published), rating }), /评分/)
+})
+
+test('save and sync publishes personal fields while preserving selected private visibility', async () => {
+  const api = apiFixture()
+  const result = await writeTableWork('save-sync', published, published, { rating: 85, visibility: 'private' }, api.request)
+  assert.equal(result.publishedBase.rating, 85)
+  assert.equal(result.publishedBase.visibility, 'private')
+  assert.equal(result.latest._status, 'published')
+  assert.deepEqual(result.latest.experiences, published.experiences)
+  assert.equal(new URL(api.calls.find(call => call.method === 'PATCH')!.route, 'http://fixture.test').searchParams.get('draft'), 'false')
+})
+
+test('table publication blocks unrelated draft fields and hidden experience edits before any write', async () => {
+  for (const changes of [{ title: 'Unreviewed title' }, { coverUrl: 'https://example.test/new.jpg' },
+    { experiences: [{ ...published.experiences![0], note: 'Private new historical note' }] },
+    { experiences: [{ ...published.experiences![0], endedOn: '2023' }, { id: 'new', endedOn: '2024' }] }]) {
+    const latest = { ...structuredClone(published), ...changes, _status: 'draft' as const, rating: 85 }
+    assert.ok(workTablePublicationBlock(latest, published))
+    for (const action of ['save-sync', 'publish-updates'] as const) {
+      const api = apiFixture(latest)
+      await assert.rejects(writeTableWork(action, latest, published, {}, api.request), /非表格修改/)
+      assert.equal(api.calls.some(call => call.method === 'PATCH'), false)
+    }
+  }
+  assert.equal(workTablePublicationBlock({ ...published, experiences: [{ ...published.experiences![0], endedOn: '2025' }] }, published), undefined)
+  assert.equal(workTablePublicationBlock({ ...published, experiences: [{ id: 'generated', endedOn: '2025' }] }, { ...published, experiences: [] }), undefined)
+})
+
+test('explicit single-row publication remains a deliberate publication of the complete saved draft', async () => {
+  const latest = { ...structuredClone(published), _status: 'draft' as const, title: 'Reviewed full title', rating: 85 }
+  const api = apiFixture(latest)
+  const result = await writeTableWork('publish', latest, published, {}, api.request)
+  assert.equal(result.publishedBase.title, 'Reviewed full title')
+  assert.equal(result.publishedBase.rating, 85)
+})
+
+test('bulk publication targets all already-public card updates and refuses unsaved input', async () => {
+  const bases = Array.from({ length: 7 }, (_, index) => ({ ...structuredClone(published), id: index + 1 }))
+  bases[1].visibility = 'private'
+  bases[2]._status = 'draft'
+  const rows = bases.map((base, index) => {
+    const latest = { ...structuredClone(base), _status: 'draft' as const, rating: index === 4 ? base.rating : 85,
+      ...(index === 3 ? { visibility: 'private' as const } : {}), ...(index === 5 ? { title: 'Unreviewed draft title' } : {}) }
+    return { base: latest, publishedBase: base, values: workValues(latest) }
+  })
+  assert.deepEqual(rows.filter(row => hasPublicWorkTableUpdate(row.base, row.publishedBase)).map(row => row.base.id), [1, 6, 7])
+  const apis = new Map(rows.map(row => [row.base.id, apiFixture(row.base, row.publishedBase)]))
+  const request: typeof tableRequest = async <T>(route: string, method = 'GET', data?: unknown): Promise<T> => {
+    const url = new URL(route, 'http://fixture.test')
+    const id = Number(url.pathname.match(/works\/(\d+)/)?.[1] || url.searchParams.get('where[and][0][id][equals]'))
+    return apis.get(id)!.request<T>(route, method, data)
+  }
+  const dirty = structuredClone(rows); dirty[0].values.rating = '90'
+  await assert.rejects(publishTableUpdates(dirty, () => {}, () => {}, request), /先点击/)
+  assert.equal([...apis.values()].flatMap(api => api.calls).length, 0)
+  const events: TableSaveResult[] = []
+  const result = await publishTableUpdates(rows, event => events.push(event), () => {}, request)
+  assert.deepEqual(result, { done: 3, total: 3, success: 2, failed: 1 })
+  assert.deepEqual(events.map(event => [event.id, Boolean(event.saved)]), [[1, true], [6, false], [7, true]])
+  for (const id of [2, 3, 4, 5, 6]) assert.equal(apis.get(id)!.calls.some(call => call.method === 'PATCH'), false)
+})
+
+test('ambiguous writes reconcile persisted fields once without retrying the mutation', async () => {
+  for (const committed of [true, false]) {
+    const api = apiFixture()
+    const request: typeof tableRequest = async <T>(route: string, method = 'GET', data?: unknown): Promise<T> => {
+      if (method !== 'PATCH') return api.request<T>(route, method, data)
+      if (committed) await api.request<T>(route, method, data)
+      else api.calls.push({ route, method, data })
+      throw Error('Response lost')
+    }
+    const operation = writeTableWork('save-sync', published, published, { rating: 85 }, request)
+    if (committed) assert.equal((await operation).publishedBase.rating, 85)
+    else await assert.rejects(operation, /结果尚未确认.*未自动重试/)
+    assert.equal(api.calls.filter(call => call.method === 'PATCH').length, 1)
+    assert.equal(api.calls.slice(-2).every(call => call.method === 'GET'), true)
+  }
+})
+
+test('a 200 response with unchanged fields cannot report successful synchronization', async () => {
+  const api = apiFixture()
+  const request: typeof tableRequest = async <T>(route: string, method = 'GET', data?: unknown): Promise<T> => {
+    if (method === 'PATCH') return { docs: [published] } as T
+    return api.request<T>(route, method, data)
+  }
+  await assert.rejects(writeTableWork('save-sync', published, published, { rating: 85 }, request), /需要核对/)
 })
