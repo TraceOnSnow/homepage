@@ -76,7 +76,8 @@ test('default cover pool uses native upload/selection and preserves defaults unt
   await mediaList.getByText('pool-native-upload.png', { exact: true }).click()
   await expect(mediaList).toBeHidden()
   await expect(selected).toBeVisible()
-  await selected.getByRole('checkbox').uncheck()
+  // Removing this selection unmounts its checkbox; assert the resulting card removal.
+  await selected.getByRole('checkbox').click()
   await expect(selected).toHaveCount(0)
   expect((await request.get(`/api/media/${media.id}`)).ok()).toBe(true)
   saved = await (await request.get('/api/site-covers')).json()
