@@ -1,6 +1,6 @@
 # 现有服务器部署源码
 
-这里保存已运行的 Homepage 部署脚本与配置，供 WSL 开发、代码审查和后续部署使用。运行目录仍是仓库外的 `/home/trace/projects/homepage-deployment/`，本次归档不会移动服务、数据或更改正在运行的定时器。
+这里保存已运行的 Homepage 部署脚本与配置，供已授权的服务器 worktree 开发、代码审查和后续部署使用。运行目录仍是仓库外的 `/home/trace/projects/homepage-deployment/`，本次归档不会移动服务、数据或更改正在运行的定时器。
 
 ## 目录约定
 
@@ -33,9 +33,9 @@
 
 ## 开发与部署
 
-后续在 WSL 修改、检查、提交并推送。服务器仅在明确部署任务中拉取已提交版本、检查影响范围、备份和部署。部署配置也在 WSL 修改，再把审查过的具体源文件同步到仓库外运行目录；不要整体同步或删除运行目录。
+后续在同仓库已授权的开发 worktree 修改、检查并提交。生产 checkout 和仓库外运行目录分开；仅在明确部署任务中协调备份和部署。部署配置只同步审查过的具体源文件，不整体同步或删除运行目录。
 
-部署发布器源码前可在 WSL 运行：
+部署发布器源码前可在开发 worktree 运行：
 
 ```bash
 python3 deploy/server/test-publish-library.py
@@ -49,13 +49,13 @@ bash -n deploy/server/web/renew-cert.sh
 
 ```bash
 cd /home/trace/projects/homepage-deployment
-docker compose --env-file runtime.env ps
+docker compose --env-file runtime.env -f compose.yaml -f compose.release.yaml ps
 docker compose -f web/compose.yaml ps
 systemctl --user status homepage-library-publish.timer --no-pager
 systemctl --user status homepage-cert-renew.timer --no-pager
 ```
 
-前端代码更新而公开数据未变化时，`python3 publish-library.py --refresh` 可显式构建发布；同时有新数据时仍遵守静默期。仓库已提供 [CI 与手动部署](../../docs/ci-cd.md)，尚需单独安装服务器入口、配置 GitHub 环境并验收，推送不会直接上线。在线文章管理需要按 [文章部署交接](../../docs/posts-deployment.md) 完成迁移及来源切换。首次迁移、证书申请和恢复操作需按当次实际状态单独制定步骤，不要盲目重跑初始化。
+前端代码更新而公开数据未变化时，`python3 publish-library.py --refresh` 可显式构建发布；同时有新数据时仍遵守静默期。仓库的 [CI 与自动部署](../../docs/ci-cd.md) 已接通，发布使用审查提交与固定镜像摘要；当前部署查询运行目录 `evidence/deployment.json`。在线文章已使用 Payload，旧[文章部署交接](../../docs/posts-deployment.md)仅供追溯，不重复迁移或切换来源。首次迁移、证书申请和恢复操作需按当次实际状态单独制定步骤，不要盲目重跑初始化。
 
 `deploy-release.py` 与内容发布器共用锁，使用指定提交及 GHCR 镜像摘要，拒绝待执行的数据库迁移；失败尝试回退应用和静态站，保留数据。`ssh-deploy.py` 是专用 SSH 公钥的受限入口。日常部署只更新已审查的发布器源码，不覆盖生产 Compose、systemd、Nginx 或私密配置。`compose.release.yaml` 是部署器生成的私有镜像覆盖配置；手动管理容器时使用 `docker compose --env-file runtime.env -f compose.yaml -f compose.release.yaml ...`，不要无意切回旧的本地镜像。
 
@@ -69,3 +69,9 @@ Works 草稿迁移后只允许兼容 release 回退；旧 visibility-only API �
 - 全面备份恢复、所有上传路径及公网账号真实写入流程尚未做完整验收；运行状态不能当作这些检查已完成。
 
 产品讨论及下一阶段开发范围见 [开发交接](../../docs/development-handoff.md)。
+
+## 本机镜像保留规则（2026-10-28）
+
+仅保留运行中的网站镜像及最多一个与当前数据库兼容的回退镜像；现役 Nginx 和证书续期镜像保留。闲置旧演练容器、旧网站镜像和构建缓存可在确认无运行/构建引用后清理，数据挂载、Media、证书、私密配置和完整备份不属于镜像清理。运行镜像与回退镜像以容器实际状态及 `evidence/deployment.json` 为准，不按文件名猜。
+
+这是镜像保留策略；原部署器不会自动执行该清理，未新增定时任务。本轮已精简为4个镜像、2个运行容器、0构建缓存，回执在服务器 `evidence/storage-cleanup-20261028/`。Git只保存源码，不能代替数据库与上传文件备份。

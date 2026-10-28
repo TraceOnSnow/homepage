@@ -1,5 +1,13 @@
 # 项目阶段与迁移边界
 
+## 当前入口（2026-10-28，America/Chicago）
+
+服务器开发已授权，生产 checkout 为 `/home/trace/projects/homepage`，开发使用原仓库 worktree。作品百分制、原生草稿与Trash已上线；分类文章显示修复提交为 `78616d8481aef009d7823a2c9bf456b8a10f3905`，部署及实际镜像查询 `homepage-deployment/evidence/deployment.json`。私人主题稿与独立 Post 两稿维护，内容规则见相邻 `obsidian-workflow/docs/editorial-policy.md`。
+
+运维入口见 [部署源码说明](../deploy/server/README.md)。Docker 本地仅保留运行版和一个兼容回退版；本次只整理文档及缓存，不切换应用版本。下面是有日期的历史交付，旧“待部署/待接通”不代表当前状态，不据此重跑迁移或安装。
+
+## 历史交付记录
+
 ## 未配置映射的分类无法打开文章（2026-10-27，America/Chicago）
 
 分类链接此前只读取categoryMap，实际使用的算法／求职／游戏等未配置英文映射，最终都指向`/categories/`。现前向链接与静态路径生成统一回退到分类原名，反向查找同样保留未映射名称；Astro静态路由参数使用解码值，避免中文路径在构建时无法匹配。已有英文映射保持，后续新增分类无需先改配置才能看到文章。
