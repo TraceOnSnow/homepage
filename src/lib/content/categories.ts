@@ -103,7 +103,7 @@ export function getCategoryLinks(categories?: Category[], parentLink?: string): 
   if (!categories?.length) return [];
   const res: string[] = [];
   categories.forEach((category: Category) => {
-    const link = encodeSlug(categoryMap[category.name]);
+    const link = encodeSlug(categoryMap[category.name] || category.name);
     const fullLink = parentLink ? `${parentLink}/${link}` : link;
     res.push(fullLink);
     if (category?.children?.length) {
@@ -130,7 +130,7 @@ export function getCategoryNameByLink(link: string): string {
   if (segments.length === 0) return '';
 
   const lastSegment = decodeURIComponent(segments[segments.length - 1]);
-  return slugToName.get(lastSegment) ?? '';
+  return slugToName.get(lastSegment) ?? lastSegment;
 }
 
 /**

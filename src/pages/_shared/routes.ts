@@ -50,7 +50,7 @@ export const categoryRoute = localePaths(async ({ locale }) => {
   const { categories } = await getCategoryList(locale);
   return getCategoryLinks(categories, '').map((link) => {
     const path = link.split('/').map(getCategoryNameByLink);
-    return { params: { slug: link }, props: { category: categoryAtPath(categories, path), path } };
+    return { params: { slug: decodeURI(link) }, props: { category: categoryAtPath(categories, path), path } };
   });
 });
 

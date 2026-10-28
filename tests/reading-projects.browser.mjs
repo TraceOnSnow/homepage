@@ -74,6 +74,22 @@ try {
     await expect(page).toHaveURL(/\/post\//);
     await expect(page.locator('.custom-content')).toBeVisible();
     assert.ok((await page.locator('.custom-content').innerText()).trim().length > 80);
+    await page.goto(`${base}/categories`, { waitUntil: 'networkidle' });
+    const categoryLinks = await page
+      .locator('.category-toc a')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+    assert.ok(categoryLinks.length > 0);
+    assert.ok(
+      categoryLinks.every((href) => href && !/^\/categories\/?$/.test(href)),
+      'A category must not link back to the overview',
+    );
+    assert.equal(new Set(categoryLinks).size, categoryLinks.length);
+    await page.locator('.category-toc-head').first().click();
+    await expect(page).toHaveURL(/\/categories\/[^/?#]+/);
+    await expect(page.locator('.post-row-title').first()).toBeVisible();
+    await page.locator('.post-row-title').first().click();
+    await expect(page).toHaveURL(/\/post\//);
+    await expect(page.locator('.custom-content')).toBeVisible();
     const projectLink = await openNav('项目');
     await projectLink.click();
     await expect(page).toHaveURL(/\/projects\/?$/);
@@ -84,7 +100,14 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
     await page.screenshot({ path: `${output}/after-${width}.png`, fullPage: true });
     assert.deepEqual(errors, []);
-    results.push({ width, articleBodyVisible: true, projectCount: projects.length, horizontalOverflow: false, errors });
+    results.push({
+      width,
+      articleBodyVisible: true,
+      categoryPostsVisible: true,
+      projectCount: projects.length,
+      horizontalOverflow: false,
+      errors,
+    });
     await page.close();
   }
   const page = await browser.newPage();

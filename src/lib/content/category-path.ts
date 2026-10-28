@@ -17,7 +17,7 @@ export function buildCategoryPath(categoryNames: string | string[]): string {
   const names = Array.isArray(categoryNames) ? categoryNames : [categoryNames];
   if (names.length === 0) return '';
 
-  const slugs = names.map((name) => encodeSlug(categoryMap[name]));
+  const slugs = names.map((name) => encodeSlug(categoryMap[name] || name));
   return `/categories/${slugs.join('/')}`;
 }
 
