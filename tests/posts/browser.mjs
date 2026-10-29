@@ -203,6 +203,7 @@ try {
     assert.ok(workLayout.contentRight <= workLayout.coverLeft + 1);
     assert.ok(Math.abs(workLayout.coverRight - workLayout.cardRight) < 3);
     assert.ok(workLayout.width < workLayout.cardWidth / 2);
+    assert.ok(Math.abs(workLayout.width / workLayout.cardWidth - (width <= 768 ? 0.3 : 0.4)) < 0.02);
     assert.ok(workLayout.verticalOverlap > 180);
     assert.ok(workLayout.cardHeight <= 260);
     assert.ok(workLayout.moreRight <= workLayout.coverLeft);
