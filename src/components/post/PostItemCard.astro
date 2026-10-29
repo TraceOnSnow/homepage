@@ -50,7 +50,7 @@ const titleMorph = postTitleMorphName(slug);
 
 <div
   class={cn(
-    'group text-card-foreground shadow-card relative flex flex-col rounded-lg bg-white dark:bg-card dark:ring-1 dark:ring-white/5',
+    'group text-card-foreground shadow-card relative flex rounded-lg bg-white dark:bg-card dark:ring-1 dark:ring-white/5',
     'post-item-card motion-reveal',
   )}
   data-cover-source={artwork.source}
@@ -60,15 +60,15 @@ const titleMorph = postTitleMorphName(slug);
     tabindex="-1"
     aria-hidden="true"
     style={lqipProps.style}
-    class={cn('post-item-cover relative block w-full overflow-hidden rounded-t-lg', lqipProps.class)}
+    class={cn('post-item-cover relative order-2 block shrink-0 self-stretch overflow-hidden rounded-e-lg', lqipProps.class)}
   >
     {artwork.source === 'work' && (
       <img src={finalCover} loading="lazy" decoding="async" alt="" class="post-cover-backdrop" aria-hidden="true" />
     )}
     <ResponsiveImage
       src={finalCover}
-      maxWidth={1200}
-      sizes="(max-width: 992px) calc(100vw - 48px), 800px"
+      maxWidth={800}
+      sizes="(max-width: 768px) 30vw, (max-width: 992px) 35vw, 400px"
       loading="lazy"
       decoding="async"
       alt=""
@@ -76,7 +76,7 @@ const titleMorph = postTitleMorphName(slug);
     />
   </a>
   <div
-    class="flex w-full flex-col gap-2 px-4 pt-4 pb-5"
+    class="post-item-content relative order-1 flex min-w-0 flex-1 flex-col gap-2 px-4 pt-4 pb-5"
   >
     <ScrollableRow
       client:visible
@@ -197,7 +197,7 @@ const titleMorph = postTitleMorphName(slug);
       href={href}
       tabindex="-1"
       aria-hidden="true"
-      class="absolute -right-1 -bottom-1"
+      class="absolute right-2 bottom-2"
     >
       <Button
         tabIndex={-1}
@@ -215,7 +215,8 @@ const titleMorph = postTitleMorphName(slug);
 <style>
   .post-item-card {
     content-visibility: auto;
-    contain-intrinsic-size: auto 480px;
+    contain-intrinsic-size: auto 220px;
+    min-height: 12rem;
     transition:
       transform var(--dur-slow) var(--ease-out-quart),
       box-shadow var(--dur-slow) var(--ease-out-quart);
@@ -227,10 +228,15 @@ const titleMorph = postTitleMorphName(slug);
   }
 
   .post-item-cover {
-    aspect-ratio: 2 / 1;
-    max-height: 18rem;
+    width: 40%;
     isolation: isolate;
     background: var(--color-card, #20252b);
+  }
+
+  @media (width <= 768px) {
+    .post-item-cover {
+      width: 30%;
+    }
   }
 
   .post-cover-backdrop {

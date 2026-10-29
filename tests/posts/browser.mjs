@@ -149,7 +149,7 @@ try {
       });
     });
   }
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 768, 390, 320]) {
     const page = await browser.newPage({ viewport: { width, height: 940 } });
     await mockCoverImages(page);
     const errors = [];
@@ -172,25 +172,40 @@ try {
     await expect(workCard.locator('.post-cover-image')).toHaveAttribute('src', fixtureWorkCover);
     await expect(workCard.locator('.post-cover-backdrop')).toHaveAttribute('src', fixtureWorkCover);
     await workCard.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() => workCard.locator('.post-cover-image').evaluate((image) => image.complete && image.naturalWidth > 0))
+      .toBe(true);
     const workLayout = await workCard.evaluate((card) => {
       const image = card.querySelector('.post-cover-image');
       const cover = card.querySelector('.post-item-cover');
       const backdrop = card.querySelector('.post-cover-backdrop');
+      const content = card.querySelector('.post-item-content').getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
       const box = cover.getBoundingClientRect();
       return {
         fit: getComputedStyle(image).objectFit,
         filter: getComputedStyle(backdrop).filter,
         clip: getComputedStyle(cover).clipPath,
         width: box.width,
-        cardWidth: card.getBoundingClientRect().width,
-        ratio: box.width / box.height,
+        cardWidth: cardBox.width,
+        cardHeight: cardBox.height,
+        contentRight: content.right,
+        coverLeft: box.left,
+        coverRight: box.right,
+        cardRight: cardBox.right,
+        verticalOverlap: Math.min(content.bottom, box.bottom) - Math.max(content.top, box.top),
+        moreRight: card.querySelector('.post-item-more').getBoundingClientRect().right,
       };
     });
     assert.equal(workLayout.fit, 'contain');
     assert.ok(workLayout.filter.includes('blur('));
     assert.equal(workLayout.clip, 'none');
-    assert.ok(Math.abs(workLayout.width - workLayout.cardWidth) < 3);
-    assert.ok(workLayout.ratio >= 1.98);
+    assert.ok(workLayout.contentRight <= workLayout.coverLeft + 1);
+    assert.ok(Math.abs(workLayout.coverRight - workLayout.cardRight) < 3);
+    assert.ok(workLayout.width < workLayout.cardWidth / 2);
+    assert.ok(workLayout.verticalOverlap > 180);
+    assert.ok(workLayout.cardHeight <= 260);
+    assert.ok(workLayout.moreRight <= workLayout.coverLeft);
     await expect(manualCard).toHaveAttribute('data-cover-source', 'manual');
     await expect(manualCard.locator('.post-cover-backdrop')).toHaveCount(0);
     await expect(poolCard).toHaveAttribute('data-cover-source', 'pool');
