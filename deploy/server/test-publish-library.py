@@ -63,6 +63,30 @@ class PublicationTests(unittest.TestCase):
             self.tick(540, 'edit-5', build)
             self.assertEqual(build.call_count, 1)
 
+    def test_publication_keeps_recent_releases_and_the_previous_site(self):
+        releases = self.base / 'public/releases'
+        seeded = ['20260101T00000%dZ' % index for index in range(7)]
+        for name in seeded:
+            (releases / name).mkdir()
+        (self.base / 'public/current').unlink()
+        (self.base / 'public/current').symlink_to('releases/' + seeded[0])
+        with patch.object(publisher, 'run_build') as build:
+            self.tick(0, 'edit', build)
+            self.tick(180, 'edit', build)
+            self.assertEqual(build.call_count, 1)
+        live = Path(os.readlink(self.base / 'public/current')).name
+        remaining = sorted(item.name for item in releases.iterdir())
+        self.assertEqual(remaining, sorted(['old', seeded[0], *seeded[3:], live]))
+
+    def test_prune_never_removes_kept_or_unrecognised_entries(self):
+        releases = self.base / 'public/releases'
+        for name in ['20260101T000001Z', '20260101T000002Z', '20260101T000003Z', 'manual-backup']:
+            (releases / name).mkdir()
+        removed = publisher.prune_releases(releases, {'20260101T000001Z'}, keep=1)
+        self.assertEqual(removed, ['20260101T000002Z'])
+        self.assertEqual(sorted(item.name for item in releases.iterdir()),
+                         ['20260101T000001Z', '20260101T000003Z', 'manual-backup', 'old'])
+
     def test_edit_during_build_restarts_full_quiet_period(self):
         with patch.object(publisher, 'run_build') as build:
             self.tick(0, 'edit-a', build)

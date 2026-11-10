@@ -38,9 +38,9 @@ Use focused `feat:`, `fix:`, or `chore:` commits. PRs explain observable behavio
 
 ## Development and Deployment Boundary
 
-Server-side development in this existing repository is authorized. Use an existing development worktree after checking its branch and uncommitted changes; keep `/home/trace/projects/homepage` as the production checkout. Server maintenance proceeds only within the user’s task authorization. Do not request credentials that the established private configuration already supplies.
+Server-side development in this existing repository is authorized. Create a development branch and worktree from `main` (or reuse one after checking its branch and uncommitted changes), and remove it once merged; keep `/home/trace/projects/homepage` as the production checkout. Server maintenance proceeds only within the user’s task authorization. Do not request credentials that the established private configuration already supplies.
 
-Treat WSL SQLite and uploads as an independent development/test dataset; the server database and uploads hold production content. Git carries source and reviewed migration scripts. Dataset transfers are separate operations requiring an explicit request; keep runtime data and credentials private. Local tests explicitly select a loopback origin and local test credentials.
+Treat disposable development SQLite and uploads as an independent development/test dataset; the server database and uploads hold production content. Git carries source and reviewed migration scripts. Dataset transfers are separate operations requiring an explicit request; keep runtime data and credentials private. Local tests explicitly select a loopback origin and local test credentials.
 
 Implement source changes in the authorized development worktree, validate and commit there; deploy only when the task authorizes it. `/home/trace/projects/homepage` is now the production checkout; do not continue feature development there without explicit authorization. Server-side operational data, secrets, certificates and generated releases stay outside Git. Source templates for the existing deployment live in `deploy/server/` and are installed separately into `/home/trace/projects/homepage-deployment/`; do not run them in-place or blindly overwrite the live directory.
 

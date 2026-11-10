@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import subprocess
@@ -22,6 +23,22 @@ REPO = BASE.parent / 'homepage'
 STATE = BASE / 'evidence/library-publication.json'
 QUIET_SECONDS = 180
 FAILURE_RETRY_SECONDS = 300
+# Each release is a full static copy; keep the live one plus a few recent fallbacks.
+KEEP_RELEASES = 5
+RELEASE_NAME = re.compile(r'\d{8}T\d{6}Z')
+
+
+def prune_releases(releases, keep_names, keep=KEEP_RELEASES):
+    """Delete old timestamped release copies; never the newest `keep` or any name in keep_names."""
+    names = sorted(item.name for item in releases.iterdir()
+                   if item.is_dir() and not item.is_symlink() and RELEASE_NAME.fullmatch(item.name))
+    removed = []
+    for name in names[:-keep] if keep > 0 else names:
+        if name in keep_names:
+            continue
+        shutil.rmtree(releases / name)
+        removed.append(name)
+    return removed
 
 
 def write_json(file, value):
@@ -243,6 +260,13 @@ def publish(refresh=False):
     write_json(STATE, record)
     pending_file.unlink(missing_ok=True)
     print('Published public Works:', len(docs), 'release:', stamp)
+    try:
+        removed = prune_releases(release.parent, {stamp, Path(previous).name})
+        if removed:
+            print('Removed old releases:', len(removed))
+    except OSError as error:
+        # The new site is already live; a cleanup failure must not report a failed publication.
+        print('Release cleanup skipped:', error)
     return True
 
 
