@@ -4,7 +4,7 @@
 
 ## 更新资料
 
-项目资料暂时由 Git 中的 `src/data/projects.ts` 管理，不新增 Payload Collection 或数据库迁移。初始 5 条资料来自旧博客的 `src/data/projects.ts`，未重新判断项目开发状态，也未修改旧仓库。SteamGuess 截图复制自旧个人主页，其余项目缺少截图，先显示统一的字母占位封面。
+项目资料暂时由 Git 中的 `src/data/projects.ts` 管理，不新增 Payload Collection 或数据库迁移。初始 5 条资料来自旧博客的 `src/data/projects.ts`，未重新判断项目开发状态，也未修改旧仓库。SteamGuess 于 2026-11-12 改链到在线游玩地址 `https://steamguess.traceonsnow.com`，封面换成线上首页的 16:10 截图（1024×640，与卡片框比例一致）；其余项目缺少截图，先显示统一的字母占位封面。
 
 - `slug`：稳定的项目标识。
 - `title`、`description`：项目名称与简介。

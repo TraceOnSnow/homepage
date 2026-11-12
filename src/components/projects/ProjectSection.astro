@@ -27,7 +27,7 @@ const posts = (await getSortedPosts(locale)).filter((post) => !post.data.draft);
             aria-label={t(locale, 'projects.open', { title: project.title })}>
             <div class="bangumi-poster project-poster">
               {project.cover ? (
-                <img src={project.cover} alt="" width="1023" height="330" loading="lazy" decoding="async" />
+                <img src={project.cover} alt="" width="1024" height="640" loading="lazy" decoding="async" />
               ) : (
                 <span class="flex size-full items-center justify-center px-5 text-center font-semibold font-mono text-muted-foreground text-xl" aria-hidden="true">
                   {project.title.slice(0, 2).toUpperCase()}

@@ -13,8 +13,8 @@ export const projects: Project[] = [
   {
     slug: 'steamguess',
     title: 'SteamGuess',
-    description: '根据人气、评价、发行日期等线索猜 Steam 游戏的互动应用，支持实时房间与即时反馈。',
-    url: 'https://github.com/TraceOnSnow/SteamGuess',
+    description: '十次机会猜出一款 Steam 游戏，按价格、在线峰值、评测与标签逐项反馈；支持每日挑战、自由练习和 2–8 人房间。',
+    url: 'https://steamguess.traceonsnow.com',
     cover: '/img/projects/steamguess.png',
   },
   {
