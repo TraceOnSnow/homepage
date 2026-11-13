@@ -1,6 +1,6 @@
 # 默认文章封面来源
 
-2026-11-13 更换 `public/img/cover/1–16.webp`（800×450 WebP，按需裁切）。图片版权归原作者与版权方所有；17–21 仍为主题原有图片。
+2026-11-13 更换 `public/img/cover/1–21.webp`（800×450 WebP，按需裁切）。图片版权归原作者与版权方所有。
 
 | 编号 | 作品 | 原图分辨率 | 获取页面 | 标注来源 |
 | --- | --- | --- | --- | --- |
@@ -20,3 +20,8 @@
 | 14 | 超时空辉夜姬 | 4093x3021 | https://wallhaven.cc/w/poloze | https://x.com/hechima10040/status/2007396518433882238 |
 | 15 | 超时空辉夜姬 | 2713x1440 | https://wallhaven.cc/w/lywwpr | https://www.pixiv.net/artworks/141273914 |
 | 16 | 超时空辉夜姬 | 5376x3072 | https://wallhaven.cc/w/ml19mk | 未标注 |
+| 17 | BanG Dream!（millsage，标签未逐张核实） | 2047x1160 | https://wallhaven.cc/w/og7m87 | 未标注 |
+| 18 | Ave Mujica | 3840x2160 | https://wallhaven.cc/w/7j2z53 | https://www.pixiv.net/en/artworks/134704360 |
+| 19 | 败犬女主太多了 | 8000x3970 | https://wallhaven.cc/w/21yer6 | https://www.pixiv.net/en/artworks/124004097 |
+| 20 | 败犬女主太多了 | 2560x1810 | https://wallhaven.cc/w/xepqx3 | https://www.pixiv.net/en/users/28422802 |
+| 21 | BanG Dream!（millsage，标签未逐张核实） | 2048x1358 | https://wallhaven.cc/w/jelj7y | https://x.com/_SuiRen_sou/status/2104866342960800169 |
