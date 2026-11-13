@@ -26,7 +26,8 @@ export const READER_FONT_FAMILY_MAX_LENGTH = 128;
 export const GENERAL_DEFAULTS = {
   scrollProgress: true,
   bgmWidget: true,
-  wave: true,
+  // Cover waves are off unless a visitor turns them on in Settings.
+  wave: false,
 };
 
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';

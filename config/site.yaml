@@ -420,7 +420,7 @@ content:
 # 系统开启「减少动态效果」(prefers-reduced-motion) 时，始终按 reduced 处理
 # -----------------------------------------------------------------------------
 motion:
-  level: lively
+  level: subtle # 默认克制：不播放樱花特效，减轻低配设备的滚动卡顿
   heroPetals: true
   clickBurst: true
 
