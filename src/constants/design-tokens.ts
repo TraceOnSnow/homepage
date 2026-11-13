@@ -42,11 +42,11 @@ export const colors = {
     foreground: 'hsl(var(--warning-foreground))',
   },
 
-  // Shoka theme accent (replaces hardcoded #E95469)
+  // Shoka theme accent (blue-green, matches --primary)
   shoka: {
-    DEFAULT: '#E95469',
-    light: '#FF6B7A',
-    dark: '#D63F55',
+    DEFAULT: '#26A69A',
+    light: '#4FC3B5',
+    dark: '#1C7F78',
   },
 
   // Theme toggle colors
@@ -213,7 +213,7 @@ export const shadows = {
   // Custom shadows from project
   card: '0 0.625rem 1.875rem rgba(90, 97, 105, 0.12)',
   'card-darker': '0 0.625rem 1.875rem rgba(90, 97, 105, 0.2)',
-  'shoka-button': '0px 0px 16px 0px rgb(233, 84, 105, 0.8)',
+  'shoka-button': '0px 0px 16px 0px rgb(38, 166, 154, 0.8)',
 
   // Sakura-tinted elevation for floating controls
   'sakura-sm': '0 6px 16px -8px rgb(233 84 107 / 0.45), 0 2px 6px -3px rgb(40 20 40 / 0.12)',

@@ -52,7 +52,7 @@ const copyFailedLabel = t(locale, 'common.copyFailed');
 <div
   class:list={[
     'cover-hero relative z-0 flex overflow-hidden',
-    compact ? 'h-[42svh] min-h-72 max-h-120 tablet:h-[36svh] tablet:min-h-64' : 'h-[60svh] max-h-200',
+    compact ? 'h-[42svh] min-h-72 max-h-120 tablet:h-[36svh] tablet:min-h-64' : 'h-[max(60svh,min(80svh,56.25vw))] max-h-270',
   ]}
 >
   <div class="cover-scrim absolute inset-0 h-full"></div>
@@ -60,7 +60,7 @@ const copyFailedLabel = t(locale, 'common.copyFailed');
   <div
     class:list={[
       'cover-copy absolute inset-0 flex flex-col items-center justify-center px-5 text-white',
-      compact ? 'bottom-[4svh]' : 'bottom-[8svh]',
+      compact ? 'bottom-[4svh]' : 'bottom-[45%] md:bottom-[8svh]',
     ]}
   >
     {
