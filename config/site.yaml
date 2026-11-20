@@ -14,11 +14,11 @@ site:
   title: TraceOnSnow # 网站名称
   alternate: traceonsnow # 网站英文名称 用于页脚、Logo、@ handle 等
   subtitle: 技术、作品与生活记录 # 网站副标题
-  name: Zhiheng Wang # 作者名称 - 请修改为你的名字
+  name: TraceOnSnow # 作者名称（公开昵称，不用实名）
   description: 技术文章、个人随笔、项目与作品体验记录 # 网站描述
   avatar: /img/traceonsnow-avatar.png # 网站头像
   showLogo: false # 是否显示图形 Logo；默认显示站点名称，启用后可替换 src/assets/svg/logo.svg
-  author: Zhiheng Wang # 作者名称 - 请修改为你的名字
+  author: TraceOnSnow # 作者名称（公开昵称，不用实名）
   url: https://traceonsnow.com # 站点 URL 用于 RSS 和 SEO
   defaultOgImage: /img/traceonsnow-avatar.png # 默认 Open Graph 图片
   startYear: 2026 # 建站年份
