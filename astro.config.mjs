@@ -28,6 +28,7 @@ import { enabledFeaturedSeriesSlugs, normalizeFeaturedSeries } from './src/lib/c
 import { BUNDLED_ICON_SETS } from './src/lib/config/icon-sets.ts';
 import { normalizeMomentsConfig } from './src/lib/config/moments.ts';
 import { RESERVED_ROUTES } from './src/lib/config/reserved-routes.ts';
+import { libraryCoversIntegration } from './src/lib/library/cover-integration.ts';
 import { lazyMermaid } from './src/lib/markdown/lazy-mermaid.ts';
 import { mermaidThemeCSS } from './src/lib/markdown/mermaid-theme.ts';
 import { rehypeEncryptedBlock } from './src/lib/markdown/rehype-encrypted-block.ts';
@@ -267,6 +268,7 @@ export default defineConfig({
         },
       },
     },
+    libraryCoversIntegration(env, yamlConfig.site.url),
     ...(editorConfig.enabled ? [editorIntegration()] : []),
     {
       name: 'content-hydration',
