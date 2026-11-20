@@ -120,3 +120,10 @@ test('only public external covers are cached; uploads on the site origin stay as
   assert.equal(localCoverUrl(urls[0], { [urls[0]]: 'x.webp' }), '/library-covers/x.webp');
   assert.equal(localCoverUrl(undefined, { [urls[0]]: 'x.webp' }), undefined);
 });
+
+test('conversion still works after the Vite runner that loaded the module is closed (as in astro build)', async () => {
+  const { runnerImport } = await import('vite');
+  const { module } = await runnerImport<typeof import('./cover-cache')>(new URL('./cover-cache.ts', import.meta.url).pathname);
+  const out = await module.sharpTransform(await png(30, 45));
+  assert.equal((await sharp(out).metadata()).format, 'webp');
+});

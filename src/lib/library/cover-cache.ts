@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 
 // Build-time copies of external Work covers, served from the site's own origin.
 // Visitors then never depend on third-party image hosts (some are unreachable from mainland China).
@@ -19,8 +20,9 @@ export function coverFile(url: string): string {
   return `${createHash('sha256').update(url).digest('hex').slice(0, 24)}.webp`;
 }
 
+// Imported statically: Astro loads its config through a Vite module runner that is closed before
+// hooks finish, so a dynamic import() here fails with "Vite module runner has been closed".
 export async function sharpTransform(input: Buffer): Promise<Buffer> {
-  const { default: sharp } = await import('sharp');
   sharp.cache(false);
   // Cards are 2:3 and at most ~200px wide; 400x600 covers 2x screens.
   return sharp(input, { limitInputPixels: 40_000_000 })
