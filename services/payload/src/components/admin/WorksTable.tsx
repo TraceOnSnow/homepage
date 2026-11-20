@@ -11,7 +11,8 @@ import { publishTableUpdates, readTableWork, saveTableWorks, tableDocuments, tab
 import './works-table.css'
 
 type Row = { base: TableWork; publishedBase: TableWork; values: WorkValues; error?: string; saved?: string }
-const statuses = ['planned', 'in-progress', 'completed', 'on-hold', 'dropped'] as const
+// 想体验 (planned) stays valid in stored data but is no longer offered in the table.
+const statuses = ['in-progress', 'completed', 'on-hold', 'dropped'] as const
 const pageSize = 50
 const rowFor = (base: TableWork, publishedBase = base): Row => ({ base, publishedBase, values: workValues(base) })
 
@@ -161,7 +162,6 @@ export function WorksTable() {
       <select aria-label="筛选待处理修改" value={attention} onChange={event => filter(setAttention, event.target.value)}><option value="">全部修改状态</option><option value="dirty">未保存（{dirtyCount}）</option><option value="errors">操作失败（{errorCount}）</option></select>
       <button type="button" disabled={!hasFilters} onClick={() => clearFilters()}>清除筛选</button>
       <button type="button" disabled={busy} onClick={() => setAdding('completed')}>＋记录作品</button>
-      <button type="button" disabled={busy} onClick={() => setAdding('planned')}>加入待体验</button>
     </div>
     <div className="works-table__savebar" role="region" aria-label="作品保存操作">
       <button type="button" title="Ctrl / ⌘ S：保存全部并同步" disabled={busy || !dirtyCount} onClick={() => void save()}>保存全部并同步（{dirtyCount}）</button>

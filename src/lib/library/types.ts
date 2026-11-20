@@ -23,3 +23,18 @@ export interface LibraryWork {
   articles: ArticleLink[];
   articleId?: number | string;
 }
+
+/** Types where a status says nothing: a film or a board game is simply experienced. */
+export const STATUSLESS_TYPES: readonly WorkType[] = ['movie', 'boardgame'];
+
+export function showsStatus(type: WorkType | 'all'): boolean {
+  return type === 'all' || !STATUSLESS_TYPES.includes(type);
+}
+
+/** Translation key for a status, using the type's own word for "completed" (通关, 追完, 读完). */
+export function statusLabelKey(status: WorkStatus, type: WorkType | 'all') {
+  if (status === 'completed' && (type === 'game' || type === 'anime' || type === 'tv' || type === 'book')) {
+    return `library.completed.${type}` as const;
+  }
+  return `library.${status}` as const;
+}

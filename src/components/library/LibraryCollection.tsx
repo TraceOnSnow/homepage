@@ -2,7 +2,7 @@ import { LazyMotionProvider } from '@components/common/LazyMotionProvider';
 import { useMotionLevel } from '@hooks/useMotionLevel';
 import { useTranslation } from '@hooks/useTranslation';
 import { Icon } from '@iconify/react';
-import { type LibraryWork, WORK_TYPES, type WorkStatus, type WorkType } from '@lib/library/types';
+import { type LibraryWork, showsStatus, statusLabelKey, WORK_TYPES, type WorkStatus, type WorkType } from '@lib/library/types';
 import {
   DEFAULT_LIBRARY_VIEW,
   hasReflection,
@@ -18,18 +18,11 @@ import { getScrollBehavior } from '@lib/motion-level';
 import { cn } from '@lib/utils';
 import { m } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { TranslationKey } from '@/i18n/types';
 import { ITEMS_PER_PAGE } from '@/lib/bangumi/constants';
 import { LibraryCard } from './LibraryCard';
 
-const FILTER_OPTIONS: Array<{ key: WorkStatus | 'all'; labelKey: TranslationKey }> = [
-  { key: 'all', labelKey: 'library.all' },
-  { key: 'completed', labelKey: 'library.completed' },
-  { key: 'in-progress', labelKey: 'library.in-progress' },
-  { key: 'planned', labelKey: 'library.planned' },
-  { key: 'on-hold', labelKey: 'library.on-hold' },
-  { key: 'dropped', labelKey: 'library.dropped' },
-];
+// 想体验 (planned) is no longer offered here; the value stays valid in stored data.
+const FILTER_OPTIONS: Array<WorkStatus | 'all'> = ['all', 'completed', 'in-progress', 'on-hold', 'dropped'];
 
 function getVisiblePages(totalPages: number, currentPage: number): number[] {
   const pages: number[] = [];
@@ -232,23 +225,25 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
               </button>
             ))}
           </div>
-          <div className="index-tabs index-tabs-quiet">
-            {FILTER_OPTIONS.map(
-              ({ key, labelKey }) =>
-                (key === 'all' || (filterCounts[key] ?? 0) > 0) && (
-                  <button
-                    key={key}
-                    type="button"
-                    data-library-status={key}
-                    aria-pressed={activeFilter === key}
-                    onClick={() => handleFilterChange(key)}
-                  >
-                    {t(labelKey)}
-                    <sup>{filterCounts[key] ?? 0}</sup>
-                  </button>
-                ),
-            )}
-          </div>
+          {showsStatus(activeTab) && (
+            <div className="index-tabs index-tabs-quiet">
+              {FILTER_OPTIONS.map(
+                (key) =>
+                  (key === 'all' || (filterCounts[key] ?? 0) > 0) && (
+                    <button
+                      key={key}
+                      type="button"
+                      data-library-status={key}
+                      aria-pressed={activeFilter === key}
+                      onClick={() => handleFilterChange(key)}
+                    >
+                      {t(key === 'all' ? 'library.all' : statusLabelKey(key, activeTab))}
+                      <sup>{filterCounts[key] ?? 0}</sup>
+                    </button>
+                  ),
+              )}
+            </div>
+          )}
           <output data-library-results className="block pt-2 text-muted-foreground text-xs">
             {t('library.resultCount', { count: filteredItems.length })}
           </output>
@@ -262,7 +257,7 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
           transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
         >
           {pageItems.map((item) => (
-            <LibraryCard key={item.id} item={item} locale={locale} timeZone={timeZone} showStatus={activeFilter === 'all'} />
+            <LibraryCard key={item.id} item={item} locale={locale} timeZone={timeZone} />
           ))}
         </m.div>
 

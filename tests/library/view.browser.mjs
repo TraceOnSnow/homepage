@@ -42,7 +42,7 @@ try {
     }
     await page.locator('[data-library-reflections]').click();
     await expect.poll(visibleSlugs).toEqual(slugs(sortLibraryWorks(works.filter(hasReflection))));
-    const status = works.find((work) => work.status && hasReflection(work))?.status;
+    const status = works.find((work) => work.status && work.status !== 'planned' && hasReflection(work))?.status;
     if (status) {
       await page.locator(`[data-library-status="${status}"]`).click();
       await expect

@@ -152,14 +152,16 @@ test('full Works table edits personal fields, preserves history, manages article
   await expect(page.getByRole('status').filter({ hasText: '已定位作品' })).toBeVisible()
   expect((await (await request.get('/api/works?where[slug][equals]=table-searched-game', { headers })).json()).totalDocs).toBe(1)
 
-  await page.getByRole('button', { name: '加入待体验', exact: true }).click()
-  await page.getByLabel('搜索外部作品').fill('Table manual planned book')
+  // 想体验 is no longer offered in the table; a manual add records an experienced work.
+  await expect(page.getByRole('button', { name: '加入待体验', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '＋记录作品', exact: true }).click()
+  await page.getByLabel('搜索外部作品').fill('Table manual book')
   await page.getByRole('button', { name: '手动添加', exact: true }).click()
-  await expect(drawer().locator('#field-title')).toHaveValue('Table manual planned book')
-  await expect(drawer().locator('#field-status')).toContainText(/Planned|计划中/)
+  await expect(drawer().locator('#field-title')).toHaveValue('Table manual book')
+  await expect(drawer().locator('#field-status')).toContainText(/Completed|完成/)
   await drawer().getByLabel(/Finished on|结束时间/).fill('2021-09')
   await drawer().getByRole('button', { name: /^(Save Draft|保存草稿)$/ }).click()
-  await expect(page.getByLabel('Table manual planned book状态')).toHaveValue('planned')
+  await expect(page.getByLabel('Table manual book状态')).toHaveValue('completed')
   await expect(page).toHaveURL(/\/admin\/works-table$/)
 
   await page.getByLabel('搜索已收录作品').fill('Table private game')
