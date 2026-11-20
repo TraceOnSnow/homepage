@@ -131,7 +131,9 @@ try {
     await page.goto(`${origin}/library`, { waitUntil: 'domcontentloaded' });
     const shelf = page.locator('[data-library-shelf]');
     await expect(shelf.locator('[data-work-slug]')).toHaveCount(24);
-    await expect(shelf.locator('[data-library-type]')).toHaveCount(9);
+    // 漫画 and 美漫 have no shelf tab; their works still appear under 全部.
+    await expect(shelf.locator('[data-library-type]')).toHaveCount(7);
+    await expect(shelf.locator('[data-library-type="manga"], [data-library-type="comic"]')).toHaveCount(0);
     const unscored = shelf.locator('[data-work-slug="library-test-game-0"]');
     await expect(unscored.locator('.bangumi-own-score')).toHaveCount(0);
     await expect(unscored.locator('img')).toHaveAttribute(
@@ -149,7 +151,7 @@ try {
     await expect(shelf.locator('[data-work-slug]')).toHaveCount(2);
     await shelf.locator('[data-library-status="completed"]').click();
     await expect(shelf.locator('[data-work-slug]')).toHaveCount(6);
-    for (const type of ['book', 'movie', 'tv', 'anime', 'manga', 'comic', 'boardgame']) {
+    for (const type of ['book', 'movie', 'tv', 'anime', 'boardgame']) {
       await shelf.locator(`[data-library-type="${type}"]`).click();
       await expect(shelf.locator('[data-work-slug]')).toHaveCount(1);
       await expect(shelf.locator('[data-library-status="all"]')).toHaveAttribute('aria-pressed', 'true');
@@ -166,7 +168,7 @@ try {
     assert.deepEqual(errors, []);
     await context.close();
     console.log(
-      `PASS ${viewport.width}px: eight types, status, paging, personal scores, upload cover, Markdown links, locale and overflow.`,
+      `PASS ${viewport.width}px: six type tabs, status, paging, personal scores, upload cover, Markdown links, locale and overflow.`,
     );
   }
   await stop(api);

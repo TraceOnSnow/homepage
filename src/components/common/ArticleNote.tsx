@@ -18,13 +18,17 @@ export function ArticleNote({
   const contentRef = useRef<HTMLParagraphElement>(null);
   const [canExpand, setCanExpand] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Expanded cards get a wider layout where the text may fit in three lines; measuring
+  // then would hide the button, collapse the card, and loop. Only measure while collapsed.
+  const expandedRef = useRef(false);
+  expandedRef.current = expanded;
 
   useEffect(() => {
     const content = contentRef.current;
     if (!expandable || !text || !content) return;
     let active = true;
     const measure = () => {
-      if (!active) return;
+      if (!active || expandedRef.current) return;
       const lineHeight = Number.parseFloat(getComputedStyle(content).lineHeight);
       if (!Number.isFinite(lineHeight) || !lineHeight) return;
       setCanExpand(content.scrollHeight > lineHeight * 3 + 1);

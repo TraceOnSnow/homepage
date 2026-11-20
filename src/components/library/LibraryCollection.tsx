@@ -76,7 +76,8 @@ export function LibraryCollection({ works, locale, timeZone }: LibraryCollection
   const tabs = useMemo(
     () => [
       { key: 'all' as const, label: t('library.all'), count: works.length },
-      ...WORK_TYPES.map((key) => ({
+      // 漫画 and 美漫 stay valid work types but get no shelf tab.
+      ...WORK_TYPES.filter((key) => key !== 'manga' && key !== 'comic').map((key) => ({
         key,
         label: t(`library.${key}`),
         count: works.filter((work) => work.type === key).length,
