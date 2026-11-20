@@ -65,7 +65,8 @@ export function publicLibraryWork(input: unknown, base: string): LibraryWork | u
     year: work.releaseDate?.match(/^\d{4}/)?.[0],
     recordedAt: validDate(work.createdAt),
     experiencedAt: work.experiences
-      ?.map((experience) => validExperienceDate(experience.endedOn))
+      // Each experience counts by its end date, or by its start date when no end was recorded.
+      ?.map((experience) => validExperienceDate(experience.endedOn) ?? validExperienceDate(experience.startedOn))
       .filter((date): date is string => Boolean(date))
       .sort((a, b) => Date.parse(a) - Date.parse(b))
       .at(-1),

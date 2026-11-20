@@ -1,7 +1,7 @@
 import { ArticleNote } from '@components/common/ArticleNote';
 import { useTranslation } from '@hooks/useTranslation';
 import type { LibraryWork } from '@lib/library/types';
-import { displayDate, formatLibraryDate } from '@lib/library/view';
+import { formatLibraryDate } from '@lib/library/view';
 
 export function LibraryCard({
   item,
@@ -15,7 +15,8 @@ export function LibraryCard({
   timeZone: string;
 }) {
   const { t } = useTranslation(locale);
-  const date = displayDate(item);
+  // Only personal experience dates are shown; the date a work was added to the site is not.
+  const date = item.experiencedAt;
   const mainArticle = item.articles[0];
   const coverAndTitle = (
     <>
@@ -57,7 +58,6 @@ export function LibraryCard({
       </p>
       {date && (
         <p className="mt-1 text-muted-foreground text-xs">
-          {t(item.experiencedAt ? 'library.experiencedAt' : 'library.recordedAt')}{' '}
           <time dateTime={date}>{formatLibraryDate(date, locale, timeZone)}</time>
         </p>
       )}

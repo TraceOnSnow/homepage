@@ -151,7 +151,8 @@ test('personal dates come from experience history and creation, never release ye
   assert.equal(displayed.recordedAt, '2026-03-02T12:00:00.000Z');
   assert.ok(!JSON.stringify(displayed).includes('private-history-detail'));
   assert.equal(requireWork({ ...work, createdAt: null, experiences: [] }).recordedAt, undefined);
-  assert.equal(requireWork({ ...work, experiences: [{ startedOn: '2026-05-01' }] }).experiencedAt, undefined);
+  assert.equal(requireWork({ ...work, experiences: [{ startedOn: '2026-05-01' }] }).experiencedAt, '2026-05-01');
+  assert.equal(requireWork({ ...work, experiences: [{ startedOn: '2025-07', endedOn: null }] }).experiencedAt, '2025-07');
 });
 
 test('finished dates retain year/month/day precision and never use a later start date', () => {

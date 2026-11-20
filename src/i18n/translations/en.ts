@@ -36,8 +36,6 @@ export const uiStrings: UIStrings = {
   'library.dropped': 'Dropped',
   'library.articles': 'Related articles',
   'library.reflections': 'With reflections',
-  'library.experiencedAt': 'Finished',
-  'library.recordedAt': 'Recorded',
   'library.sort': 'Sort',
   'library.sort.experienced': 'Latest finish date',
   'library.sort.recorded': 'Recently added',

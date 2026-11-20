@@ -35,8 +35,6 @@ export const uiStrings = {
   'library.dropped': '已放弃',
   'library.articles': '相关文章',
   'library.reflections': '有感想',
-  'library.experiencedAt': '结束于',
-  'library.recordedAt': '记录于',
   'library.sort': '排序',
   'library.sort.experienced': '结束时间（最新）',
   'library.sort.recorded': '最近添加',
