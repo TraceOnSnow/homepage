@@ -24,7 +24,7 @@ export const uiStrings = {
   'library.book': '书籍',
   'library.movie': '电影',
   'library.tv': '电视剧',
-  'library.anime': '动画',
+  'library.anime': '动漫',
   'library.manga': '漫画',
   'library.comic': '美漫',
   'library.boardgame': '桌游',
