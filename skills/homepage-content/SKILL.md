@@ -57,6 +57,15 @@ Works 与 Posts 的 list/get 都读取最新草稿。作品 create/import/update
 
 多卷书用哪册封面代表整部作品，应在操作记录注明，不据封面推断用户阅读范围。无法核实的字段留空；更正已有错误值使用普通 `works update` 并明确依据。
 
+### 批量补封面的实际经验（2026-11-18）
+
+- 资料接口：`metadata details` 的名称参数须与搜到该候选时所用名称一致，否则返回 400。写入 `enrich` 时 `sources[]` 每项只保留 `provider/externalId/url/fetchedAt` 四个键，候选里多出的键（如 `type`）要去掉。中文名搜不准时改用英文名或别名重搜；IGDB/RAWG 偶尔把截图当封面，核对图片是否为竖版封面。Google Books 对中文网文和老版武侠常缺图或匹配到其他书。
+- 桌游没有资料 provider。BoardGameGeek 网页与 XML API 会被 Cloudflare 拦截，可用其 JSON 接口 `https://api.geekdo.com/api/geekitems?objecttype=thing&objectid=ID` 取主图（`/api/images` 可查图片列表），来源 URL 用 `https://boardgamegeek.com/boardgame/ID`。
+- 中文图书：QQ 阅读、微信读书作品页的 `og:image` 可直接外链；中文维基百科可作补充。豆瓣图片在无 referer 时返回 418，番茄小说图片 URL 带签名会过期，起点与百度百科拒绝自动访问，均不作为 `coverUrl`。
+- Steam 游戏可用商店竖版图 `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/APPID/library_600x900.jpg`（实际以商店页给出的地址为准）。
+- 每个外部封面都用不带 referer 的请求确认返回 200 且为 `image/*` 后再写入；网站页面直接外链该地址。
+- `enrich`、`publish` 后，若该作品也由 Markdown 内容库同步，库端会因本地没有 creators/sources 等网站资料字段而报 field-merge 冲突，按内容库的同步审查流程逐条选择网站值处理，不改库内隐藏状态。
+
 ## 文章
 
 ```sh
