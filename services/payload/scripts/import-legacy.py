@@ -60,7 +60,8 @@ def import_legacy(source: Path, destination: Path) -> dict:
                     break
             if baseline is None:
                 raise ValueError('Legacy schema does not match a committed migration baseline')
-            migration_names = [name for name in re.findall(r"name: '([^']+)'", (SERVICE_ROOT / 'src/migrations/index.ts').read_text()) if name <= baseline]
+            migration_names = [name for name in re.findall(r"name: '([^']+)'", (SERVICE_ROOT / 'src/migrations/index.ts').read_text())
+                               if name <= baseline and name not in data_migrations]
             if copied.execute('PRAGMA foreign_key_check').fetchone():
                 raise ValueError('Source snapshot contains foreign-key violations')
             recorded = {row[0] for row in copied.execute('SELECT name FROM payload_migrations')}

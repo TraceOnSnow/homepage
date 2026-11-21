@@ -7,6 +7,7 @@
 - 迁移 `20261121_040935_cloud_flag` 只做加法：`works.cloud` 和 `_works_v.version_cloud`，都是 `integer DEFAULT false`。不重建表，不改写内容、版本、发布状态或时间戳。迁移在一个事务内执行，执行后检查外键；`down` 拒绝删列。
 - JSON 快照与前一个快照相比只多这两列。迁移后再运行 `migrate:create`，报告「No schema changes」。
 - 现在运行的旧版应用可以直接读写迁移后的库：Payload 只读写自己认识的列，新插入的行用默认值 false。
+- 旧库导入脚本 `import-legacy.py` 以前按「迁移名 ≤ 匹配到的 schema 基线」标记已执行的迁移。现在最新基线排在评分迁移之后，纯数据的评分迁移会被误标为已执行。已改为数据迁移一律不按 schema 推断，集成测试覆盖了这种情况。
 - deployer 增加了保护：库里有 `cloud` 列或这条迁移记录时，拒绝部署或回退到不含这条迁移的版本，因为旧版本会把新草稿的「云」重置为 false。
 
 ## 生产切换顺序

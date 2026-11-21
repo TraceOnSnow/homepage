@@ -18,7 +18,7 @@ test('migrated Works table retains partial dates and independently saves/publish
     payload = await getPayload({ config }); await payload.db.migrate()
     const db = payload.db as unknown as SQLiteAdapter
     const { generateDrizzleJson, generateMigration } = db.requireDrizzleKit()
-    const previous = JSON.parse(await readFile(new URL('../../src/migrations/20261022_050000_content_trash.json', import.meta.url), 'utf8'))
+    const previous = JSON.parse(await readFile(new URL('../../src/migrations/20261121_040935_cloud_flag.json', import.meta.url), 'utf8'))
     assert.deepEqual(await generateMigration(previous, await generateDrizzleJson(db.schema)), [], 'reviewed migration snapshot must match the draft and Trash-capable schema')
     const key = 'isolated-works-table-native-api-key-at-least-32'
     await payload.create({ collection: 'content-clients', data: { name: 'Test client', apiKey: key } })
