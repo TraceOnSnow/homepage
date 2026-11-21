@@ -33,6 +33,13 @@ export interface PageMetaProps {
   rssFeeds?: RssFeedLink[];
   /** Disable locale hreflang links for a canonical route that is not duplicated per locale. */
   includeLocaleAlternates?: boolean;
+  /**
+   * Language of the main content when it differs from the page locale (a fallback copy).
+   * Sets `<html lang>`, drops hreflang links and defaults canonical to the content-locale URL.
+   */
+  contentLocale?: string;
+  /** Locales holding a real version of this page; hreflang lists only these. Omit when every locale has one. */
+  localeAlternates?: string[];
 }
 
 export interface PageMeta extends PageMetaProps {

@@ -45,6 +45,7 @@ import { collapsibleCodeTransformer } from './src/lib/markdown/shiki-collapsible
 import { shokaMetaTransformer } from './src/lib/markdown/shiki-meta-transformer.ts';
 import { SHIKI_THEMES } from './src/lib/markdown/shiki-themes.ts';
 import { syncPosts } from './src/lib/posts/snapshot.ts';
+import { canonicalSitemapFilter } from './src/lib/seo/sitemap-canonical.ts';
 
 // Load YAML config directly with Node.js (before Vite plugins are available)
 // This is only used in astro.config.mjs - other files use @rollup/plugin-yaml
@@ -76,11 +77,14 @@ const enabledI18nLocales = (i18nYaml?.locales ?? [{ code: 'zh' }])
 
 // Keep noindex tools and disabled-feature redirect stubs out of the sitemap.
 const sitemapExcludedPaths = ['/editor', ...(yamlConfig.bangumi ? [] : ['/bangumi'])];
+// Duplicates whose canonical names another page (locale fallback copies of posts and Markdown pages) stay out too.
+const sitemapCanonical = canonicalSitemapFilter();
 const isSitemapPage = (page) => {
   const pathname = new URL(page).pathname;
   const localeMatch = pathname.match(/^\/([^/]+)(\/.*)?$/);
   const unprefixed = localeMatch && enabledI18nLocales.includes(localeMatch[1]) ? (localeMatch[2] ?? '/') : pathname;
-  return !sitemapExcludedPaths.some((excluded) => unprefixed === excluded || unprefixed.startsWith(`${excluded}/`));
+  if (sitemapExcludedPaths.some((excluded) => unprefixed === excluded || unprefixed.startsWith(`${excluded}/`))) return false;
+  return sitemapCanonical.filter(page);
 };
 
 const featuredSeries = normalizeFeaturedSeries(yamlConfig.featuredSeries, {
@@ -289,6 +293,8 @@ export default defineConfig({
       },
     },
     react(),
+    // Must precede sitemap(): it records the output directory the sitemap filter reads.
+    sitemapCanonical.integration,
     sitemap({ filter: isSitemapPage }),
     icon({
       include: Object.fromEntries(BUNDLED_ICON_SETS.map((set) => [set, ['*']])),

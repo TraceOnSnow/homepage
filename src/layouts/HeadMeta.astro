@@ -17,19 +17,25 @@ import {
   responsiveImageQuality,
   wideHeroMedia,
 } from '@lib/responsive-image';
+import { getHreflangLocales, matchTrailingSlash } from '@lib/seo/locale-alternates';
 import { getOgImageUrl } from '@lib/seo/og-image';
 import { SEO } from 'astro-seo';
 import { defaultLocale, getAlternateUrl, getHtmlLang, isI18nEnabled, localeList, localizedPath } from '@/i18n';
 
 const { meta } = Astro.props;
 const { locale, title, description, openGraph, robots, includeLocaleAlternates = true } = meta;
+const contentLocale = meta.contentLocale ?? locale;
 
 const resolveAbsoluteUrl = (value: string | undefined) => (value ? new URL(value, Astro.site).href : undefined);
+// Sibling-locale URL in the same trailing-slash form as this page's own canonical.
+const alternateUrl = (target: string) =>
+  new URL(matchTrailingSlash(Astro.url.pathname, getAlternateUrl(Astro.url.pathname, target)), Astro.site).href;
 
 const ogImage = resolveAbsoluteUrl(openGraph?.image) ?? getOgImageUrl(meta.coverImage, Astro.site);
 const ogTitle = openGraph?.title ?? title;
 const ogDescription = openGraph?.description ?? description;
-const canonicalHref = meta.canonical ?? Astro.url.href;
+// A fallback copy defers to the page in its content language.
+const canonicalHref = meta.canonical ?? (contentLocale !== locale ? alternateUrl(contentLocale) : Astro.url.href);
 const ogUrl = resolveAbsoluteUrl(openGraph?.url) ?? canonicalHref;
 
 const keywords = meta.keywords || siteConfig.keywords || [siteConfig.title];
@@ -37,11 +43,17 @@ const rssFeeds = meta.rssFeeds ?? [
   { href: new URL(localizedPath('/rss.xml', locale), Astro.site).href, title: siteConfig.title },
 ];
 
-const showLocaleAlternates = includeLocaleAlternates && isI18nEnabled;
-const alternateUrl = (target: string) => new URL(getAlternateUrl(Astro.url.pathname, target), Astro.site).href;
-const hreflangLinks = showLocaleAlternates
-  ? localeList.map((loc) => ({ lang: getHtmlLang(loc), href: alternateUrl(loc) }))
-  : [];
+const hreflangLocales =
+  includeLocaleAlternates && isI18nEnabled
+    ? getHreflangLocales({
+        pageLocale: locale,
+        contentLocale,
+        enabledLocales: localeList,
+        availableLocales: meta.localeAlternates,
+      })
+    : [];
+const hreflangLinks = hreflangLocales.map((loc) => ({ lang: getHtmlLang(loc), href: alternateUrl(loc) }));
+const showXDefault = hreflangLocales.includes(defaultLocale);
 // Dynamic routes use the existing static variants so their first visitor need not wait for AVIF encoding.
 const runtimeHero = !Astro.isPrerendered && meta.heroImage !== null && (!meta.heroImage || meta.heroImage === defaultHeroImage);
 const hero =
@@ -105,8 +117,8 @@ const portraitHero =
 {rssFeeds.map((feed) => (
   <link rel="alternate" type="application/rss+xml" title={feed.title} href={feed.href} />
 ))}
-{/* hreflang alternate links for SEO — only output when multiple locales are configured */}
+{/* hreflang alternate links for SEO — only between real language versions of this page */}
 {hreflangLinks.map(({ lang, href }) => (
   <link rel="alternate" hreflang={lang} href={href} />
 ))}
-{showLocaleAlternates && <link rel="alternate" hreflang="x-default" href={alternateUrl(defaultLocale)} />}
+{showXDefault && <link rel="alternate" hreflang="x-default" href={alternateUrl(defaultLocale)} />}
