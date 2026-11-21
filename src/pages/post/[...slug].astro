@@ -59,9 +59,10 @@ const postRelativePath = normalizedPostFilePath?.startsWith(contentRoot)
   ? normalizedPostFilePath.slice(contentRoot.length)
   : undefined;
 const isFallback = getPostLocale(post) !== locale;
-// For fallback pages (showing default-locale content under /en/), canonical should point to the original
+// For fallback pages (showing default-locale content under /en/), canonical should point to the original.
+// Keep the trailing slash so it matches the original page's own canonical (directory build output).
 const canonicalUrl = isFallback
-  ? new URL(localizedPath(`/post/${encodeSlug(getPostSlug(post))}`, defaultLocale), Astro.site).href
+  ? new URL(localizedPath(`/post/${encodeSlug(getPostSlug(post))}/`, defaultLocale), Astro.site).href
   : undefined;
 const { Content } = await render(post);
 const adjacent = await getAdjacentSeriesPosts(post, locale);
