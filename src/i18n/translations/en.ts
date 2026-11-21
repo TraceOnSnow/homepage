@@ -50,6 +50,10 @@ export const uiStrings: UIStrings = {
   'library.sort.title': 'Title',
   'projects.title': 'Projects',
   'projects.open': 'Visit project: {title}',
+  'projects.built': 'What was built',
+  'projects.challenge': 'Key challenge',
+  'projects.stack': 'Stack',
+  'projects.earlier': 'Earlier experiments',
 
   // Index pages
   'index.posts': 'posts',

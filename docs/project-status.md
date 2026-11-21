@@ -6,6 +6,10 @@
 
 运维入口见 [部署源码说明](../deploy/server/README.md)。Docker 本地仅保留运行版和一个兼容回退版；本次只整理文档及缓存，不切换应用版本。下面是有日期的历史交付，旧“待部署/待接通”不代表当前状态，不据此重跑迁移或安装。
 
+## 项目页说明与截图（2026-11-21，Asia/Shanghai）
+
+`/projects` 改为详细卡片：NanoParty、SteamGuess、TraceFlow 个人内容系统、HearthGen 各有截图、做了什么、难点与处理方式、技术栈和链接；hayaku-shelf、manboard、manbo-agent 放在“早期尝试”。项目数据仍在 `src/data/projects.ts`，新增的都是可选字段，没有新服务或迁移，编辑方式见 [项目展示](projects.md)。截图为 webp，放在 `public/img/projects/`。验证：变更文件 Biome 与全量 `pnpm lint` 通过（7 条已有 infos）；隔离端口 Astro dev（`CONTENT_SOURCE=files`）下 390／1280 宽无横向溢出，7 个项目的封面链接与 `url` 一致，4 张截图加载正常，深色模式正常；控制台仅有已存在的 ThemeToggle `title` 水合提示。未在服务器跑完整构建和 `pnpm test:reading:browser`，交给 CI。
+
 ## 作品「云」标记（2026-11-21，America/Chicago）
 
 作品新增与状态无关的布尔字段 `cloud`，表示看别人实况、解说体验，卡片右上角显示云朵。后台作品表格加了「云」列，内容客户端和 Library Agent 也接受这个字段。附带一次只加列的迁移，deployer 会拒绝回退到不含这次迁移的版本。在生产库副本上演练过，原有数据不变。生产切换顺序与验证记录见[说明](operations/cloud-flag.md)。
