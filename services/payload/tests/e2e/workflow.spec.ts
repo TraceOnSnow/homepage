@@ -78,7 +78,7 @@ test('admin searches all eight providers, saves Works, and exposes only public a
     { type: 'book', label: '书籍', provider: 'open-library', title: 'Library Book', id: 'OL1W' },
     { type: 'movie', label: '电影', provider: 'tmdb', title: '星际穿越', id: 'movie:157336' },
     { type: 'tv', label: '电视剧', provider: 'tmdb', title: 'TV Example', id: 'tv:1' },
-    { type: 'anime', label: '动画', provider: 'bangumi', title: '葬送的芙莉莲', id: '1' },
+    { type: 'anime', label: '动漫', provider: 'bangumi', title: '葬送的芙莉莲', id: '1' },
     { type: 'manga', label: '漫画', provider: 'bangumi', title: 'Manga Example', id: '2' },
     { type: 'boardgame', label: '桌游', provider: 'bgg', title: 'Catan', id: '13' },
     { type: 'comic', label: '美漫', provider: 'google-books', title: 'Comic Example', id: 'gb-2' },

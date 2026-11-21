@@ -154,7 +154,13 @@ try {
     for (const type of ['book', 'movie', 'tv', 'anime', 'boardgame']) {
       await shelf.locator(`[data-library-type="${type}"]`).click();
       await expect(shelf.locator('[data-work-slug]')).toHaveCount(1);
-      await expect(shelf.locator('[data-library-status="all"]')).toHaveAttribute('aria-pressed', 'true');
+      // Films and board games carry no status: no status filters and no status ribbon.
+      if (type === 'movie' || type === 'boardgame') {
+        await expect(shelf.locator('[data-library-status]')).toHaveCount(0);
+        await expect(shelf.locator('.bangumi-ribbon')).toHaveCount(0);
+      } else {
+        await expect(shelf.locator('[data-library-status="all"]')).toHaveAttribute('aria-pressed', 'true');
+      }
     }
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await page.goto(`${origin}/en/library`, { waitUntil: 'domcontentloaded' });

@@ -51,6 +51,39 @@
 .dark .bangumi-ribbon {
   color: hsl(var(--card));
 }
+/* Status ribbon colors: 完成 green, 进行中 blue, 搁置 amber, 弃坑 red. */
+.bangumi-ribbon[data-status="completed"] {
+  background: hsl(95 45% 72%);
+  color: hsl(95 70% 17%);
+}
+.bangumi-ribbon[data-status="in-progress"] {
+  background: hsl(210 70% 83%);
+  color: hsl(210 80% 26%);
+}
+.bangumi-ribbon[data-status="on-hold"] {
+  background: hsl(38 92% 72%);
+  color: hsl(33 85% 20%);
+}
+.bangumi-ribbon[data-status="dropped"] {
+  background: hsl(0 75% 86%);
+  color: hsl(0 60% 30%);
+}
+.dark .bangumi-ribbon[data-status="completed"] {
+  background: hsl(95 50% 20%);
+  color: hsl(95 50% 82%);
+}
+.dark .bangumi-ribbon[data-status="in-progress"] {
+  background: hsl(210 70% 24%);
+  color: hsl(210 80% 86%);
+}
+.dark .bangumi-ribbon[data-status="on-hold"] {
+  background: hsl(33 80% 22%);
+  color: hsl(38 90% 80%);
+}
+.dark .bangumi-ribbon[data-status="dropped"] {
+  background: hsl(0 55% 24%);
+  color: hsl(0 80% 86%);
+}
 .bangumi-title {
   display: -webkit-box;
   margin-top: 0.75rem;

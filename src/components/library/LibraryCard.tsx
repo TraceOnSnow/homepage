@@ -1,19 +1,9 @@
 import { ArticleNote } from '@components/common/ArticleNote';
 import { useTranslation } from '@hooks/useTranslation';
-import type { LibraryWork } from '@lib/library/types';
+import { type LibraryWork, showsStatus, statusLabelKey } from '@lib/library/types';
 import { formatLibraryDate } from '@lib/library/view';
 
-export function LibraryCard({
-  item,
-  locale,
-  showStatus,
-  timeZone,
-}: {
-  item: LibraryWork;
-  locale: string;
-  showStatus: boolean;
-  timeZone: string;
-}) {
+export function LibraryCard({ item, locale, timeZone }: { item: LibraryWork; locale: string; timeZone: string }) {
   const { t } = useTranslation(locale);
   // Only personal experience dates are shown; the date a work was added to the site is not.
   const date = item.experiencedAt;
@@ -36,7 +26,11 @@ export function LibraryCard({
             {t('bangumi.noImage')}
           </span>
         )}
-        {item.status === 'in-progress' && showStatus && <span className="bangumi-ribbon">{t('library.in-progress')}</span>}
+        {item.status && showsStatus(item.type) && (
+          <span className="bangumi-ribbon" data-status={item.status}>
+            {t(statusLabelKey(item.status, item.type))}
+          </span>
+        )}
       </div>
       <h2 className="bangumi-title" title={item.title}>
         {item.title}
@@ -53,7 +47,6 @@ export function LibraryCard({
         <div className="bangumi-card group">{coverAndTitle}</div>
       )}
       <p className="bangumi-meta">
-        {showStatus && item.status && item.status !== 'in-progress' && <span>{t(`library.${item.status}`)}</span>}
         {item.rating !== undefined && <span className="bangumi-own-score tabular-nums">★ {item.rating}/100</span>}
       </p>
       {date && (
