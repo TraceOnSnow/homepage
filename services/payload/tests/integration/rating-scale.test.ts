@@ -25,10 +25,10 @@ c=sqlite3.connect(sys.argv[1]);print(json.dumps([c.execute('SELECT id,rating FRO
     const { getPayload, handleEndpoints } = await import('payload')
     const { default: config } = await import('../../src/payload.config')
     const { migrations } = await import('../../src/migrations')
-    const migration = migrations.at(-1)!
+    const migration = migrations.find(m => m.name === '20261028_120000_rating_scale_100')!
     const { ratingScaleMarker } = await import('../../src/migrations/20261028_120000_rating_scale_100')
     payload = await getPayload({ config })
-    await payload.db.migrate({ migrations: migrations.slice(0, -1).map(m => ({ name: m.name, up: args => m.up(args as MigrateUpArgs), down: args => m.down(args as MigrateDownArgs) })) })
+    await payload.db.migrate({ migrations: migrations.filter(m => m.name !== '20261028_120000_rating_scale_100').map(m => ({ name: m.name, up: args => m.up(args as MigrateUpArgs), down: args => m.down(args as MigrateDownArgs) })) })
     const pub = await payload.create({ collection: 'works', data: { title: 'Different versions', type: 'game', slug: 'different-versions', visibility: 'public', _status: 'published', rating: 8.5, note: 'Published reaction', experiences: [{ id: 'stable-experience', endedOn: '2020-05' }] } })
     await payload.update({ collection: 'works', id: pub.id, draft: true, data: { rating: 8.37, note: 'Private latest reaction', _status: 'draft' } })
     for (const [slug, rating] of [['zero', 0], ['unrated', null], ['fine', 8.375], ['tiny', 1e-7], ['max', 10]] as const) {
@@ -95,7 +95,7 @@ c=sqlite3.connect(sys.argv[1]);print(json.dumps([c.execute('SELECT id,rating FRO
     assert.equal(publicResponse.status, 200)
     assert.equal((await publicResponse.json()).rating, 85)
     const { generateDrizzleJson, generateMigration } = adapter.requireDrizzleKit()
-    const schema = JSON.parse(await readFile(new URL('../../src/migrations/20261028_120000_rating_scale_100.json', import.meta.url), 'utf8'))
+    const schema = JSON.parse(await readFile(new URL('../../src/migrations/20261121_040935_cloud_flag.json', import.meta.url), 'utf8'))
     assert.deepEqual(await generateMigration(schema, await generateDrizzleJson(adapter.schema)), [], 'numeric storage and snapshot require no table change')
     assert.deepEqual(python(`import sqlite3,sys,json;c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute('PRAGMA foreign_key_check').fetchall()))`), [])
     assert.equal(python(`import sqlite3,sys,json;c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute('PRAGMA integrity_check').fetchone()[0]))`), 'ok')

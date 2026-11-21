@@ -10,7 +10,7 @@ try {
   if (process.argv[2] === 'create') {
     // This fixture intentionally represents a pre-percent legacy database.
     const { migrations } = await import('../../src/migrations')
-    await payload.db.migrate({ migrations: migrations.slice(0, -1).map(m => ({ name: m.name, up: args => m.up(args as MigrateUpArgs), down: args => m.down(args as MigrateDownArgs) })) })
+    await payload.db.migrate({ migrations: migrations.filter(m => m.name !== '20261028_120000_rating_scale_100').map(m => ({ name: m.name, up: args => m.up(args as MigrateUpArgs), down: args => m.down(args as MigrateDownArgs) })) })
   } else await payload.db.migrate()
   if (process.argv[2] === 'create') {
     await payload.create({ collection: 'users', data: { email: 'owner@example.test', password: 'persistence-test-password' } })

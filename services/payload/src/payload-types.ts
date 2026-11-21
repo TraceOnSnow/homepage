@@ -187,6 +187,10 @@ export interface Work {
    */
   rating?: number | null;
   status?: ('planned' | 'in-progress' | 'completed' | 'on-hold' | 'dropped') | null;
+  /**
+   * Experienced secondhand through a playthrough or recap, independent of status; shown as a cloud on the card.
+   */
+  cloud?: boolean | null;
   tags?: string[] | null;
   /**
    * A reaction or progress note, e.g. episode 8 or second playthrough. Empty reactions display the linked article title.
@@ -465,6 +469,7 @@ export interface WorksSelect<T extends boolean = true> {
   slug?: T;
   rating?: T;
   status?: T;
+  cloud?: T;
   tags?: T;
   note?: T;
   article?: T;

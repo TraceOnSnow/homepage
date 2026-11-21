@@ -84,6 +84,27 @@
   background: hsl(0 55% 24%);
   color: hsl(0 80% 86%);
 }
+/* 云 (experienced secondhand): a round badge in the top-right corner, independent of status. */
+.bangumi-cloud {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: hsl(200 85% 92%);
+  color: hsl(205 75% 38%);
+  box-shadow:
+    0 0 0 1px hsl(0 0% 100% / 0.45),
+    0 4px 12px -2px hsl(0 0% 0% / 0.35);
+}
+.dark .bangumi-cloud {
+  background: hsl(205 55% 22%);
+  color: hsl(200 85% 82%);
+}
 .bangumi-title {
   display: -webkit-box;
   margin-top: 0.75rem;

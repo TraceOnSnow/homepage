@@ -21,6 +21,7 @@ WORKS_DRAFT_MIGRATION = '20261021_034349_works_drafts'
 CONTENT_TRASH_MIGRATION = '20261022_050000_content_trash'
 RATING_SCALE_MIGRATION = '20261028_120000_rating_scale_100'
 RATING_SCALE_MARKER = 'data:personal-rating-scale:100:v1'
+CLOUD_FLAG_MIGRATION = '20261121_040935_cloud_flag'
 
 
 def validate_release(commit, image):
@@ -74,11 +75,14 @@ def check_release_compatibility(database, target):
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
         applied = {row[0] for row in connection.execute('SELECT name FROM payload_migrations')}
         columns = {row[1] for row in connection.execute('PRAGMA table_info(works)')}
+        cloud_schema = 'cloud' in columns
         trash_schema = any(
             column in {row[1] for row in connection.execute(f'PRAGMA table_info({table})')}
             for table, column in [('works', 'deleted_at'), ('cms_posts', 'deleted_at'),
                                   ('_works_v', 'version_deleted_at'), ('_cms_posts_v', 'version_deleted_at')])
         versions = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='_works_v'").fetchone()
+    if (CLOUD_FLAG_MIGRATION in applied or cloud_schema) and CLOUD_FLAG_MIGRATION not in target:
+        raise ValueError('Legacy release would reset 云 flags in new Work drafts; use a reviewed cloud-compatible release')
     if (RATING_SCALE_MIGRATION in applied or RATING_SCALE_MARKER in applied) and RATING_SCALE_MIGRATION not in target:
         raise ValueError('Legacy release would misinterpret hundred-point ratings; use a reviewed 0–100-compatible release')
     if (CONTENT_TRASH_MIGRATION in applied or trash_schema) and CONTENT_TRASH_MIGRATION not in target:

@@ -167,3 +167,11 @@ test('hundred-point public ratings retain fractional precision and are never mul
   for (const rating of [0, 8.5, 85, 100, 83.75]) assert.equal(requireWork({ ...work, rating }).rating, rating);
   for (const rating of [-1, 100.1, 101]) assert.throws(() => requireWork({ ...work, rating }), /invalid public Work/);
 });
+
+test('云 ships only when set: true shows the cloud, false or missing leaves the card unchanged', () => {
+  assert.equal(requireWork({ ...work, cloud: true }).cloud, true);
+  assert.equal('cloud' in requireWork({ ...work, cloud: false }), false);
+  assert.equal('cloud' in requireWork({ ...work, cloud: null }), false);
+  assert.equal('cloud' in requireWork(work), false);
+  assert.throws(() => publicLibraryWork({ ...work, cloud: 'yes' }, base), /invalid public Work/);
+});

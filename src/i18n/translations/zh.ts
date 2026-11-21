@@ -36,6 +36,8 @@ export const uiStrings = {
   'library.completed.tv': '追完',
   'library.completed.book': '读完',
   'library.on-hold': '搁置',
+  'library.cloud': '云',
+  'library.cloud.hint': '云：看别人的实况或解说体验的',
   'library.dropped': '弃坑',
   'library.articles': '相关文章',
   'library.reflections': '有感想',

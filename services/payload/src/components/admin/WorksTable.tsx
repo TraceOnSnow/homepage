@@ -177,7 +177,7 @@ export function WorksTable() {
     <p className="works-table__muted">保存并同步会发布作品卡片更新，私密记录仍保持私密。公开作品将在停止编辑约 3 分钟并完成构建后更新网站。“发布全部作品更新”覆盖全部分页与筛选外的已公开作品，仅处理已保存的卡片字段更新；私密及从未公开的作品不在范围内。草稿另有标题、封面等修改时会阻止该行同步，请到详情核对。关联文章独立发布，作品保存不会公开文章或私人正文。下架保留草稿和历史。短感受留空时使用文章标题。</p>
     <div className="works-table__scroll" role="region" aria-label="作品编辑表格" aria-busy={busy} tabIndex={0}>
       <table><caption>全部作品及个人记录，共 {rows.length} 条；当前筛选 {visible.length} 条</caption>
-        <thead><tr>{['作品', '状态', '个人评分（满分100）', '开始时间', '结束时间', '短感受', '关联笔记', '发布时可见性', '草稿与发布'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <thead><tr>{['作品', '状态', '云', '个人评分（满分100）', '开始时间', '结束时间', '短感受', '关联笔记', '发布时可见性', '草稿与发布'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{pageRows.map(row => <WorkTableRow key={row.base.id} row={row} articles={articles} disabled={busy}
           onChange={patch => change(row.base.id, patch)} onArticle={post => setArticles(current => ({ ...current, [post.id]: post }))} onWork={mergeWork}
           onRemove={() => setRows(current => current.filter(item => item.base.id !== row.base.id))}
@@ -219,6 +219,7 @@ function WorkTableRow({ row, articles, disabled, onChange, onArticle, onWork, on
         onSave={async () => { const saved = await tableRequest<TableWork>(`works/${work.id}?depth=0&draft=true`); onWork(saved); drawer.closeDrawer() }} />
     </td>
     <td data-label="状态"><select aria-label={`${work.title}状态`} value={values.status} disabled={disabled} onChange={event => onChange({ status: event.target.value })}><option value="">未填写</option>{statuses.map(value => <option key={value} value={value}>{dictionaries.zh[value]}</option>)}</select></td>
+    <td data-label="云"><input aria-label={`${work.title}云`} type="checkbox" checked={values.cloud} disabled={disabled} onChange={event => onChange({ cloud: event.target.checked })} /></td>
     <td data-label="个人评分"><input aria-label={`${work.title}评分`} className="works-table__rating" type="number" min="0" max="100" step="1" value={values.rating} disabled={disabled} onChange={event => onChange({ rating: event.target.value })} /></td>
     <td data-label="开始时间"><input aria-label={`${work.title}开始时间`} className="works-table__date" value={values.startedOn} disabled={disabled} placeholder="可空" onChange={event => onChange({ startedOn: event.target.value })} /></td>
     <td data-label="结束时间"><input aria-label={`${work.title}结束时间`} className="works-table__date" value={values.endedOn} disabled={disabled} placeholder="年 / 月 / 日" onChange={event => onChange({ endedOn: event.target.value })} /></td>

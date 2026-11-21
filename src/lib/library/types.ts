@@ -13,6 +13,8 @@ export interface LibraryWork {
   title: string;
   type: WorkType;
   status?: WorkStatus;
+  /** 云: experienced secondhand (someone else's playthrough or a recap), independent of status. */
+  cloud?: boolean;
   rating?: number;
   year?: string;
   recordedAt?: string;

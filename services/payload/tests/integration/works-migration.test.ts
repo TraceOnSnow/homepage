@@ -16,7 +16,7 @@ test('Works drafts upgrade preserves every old table row, array ID, relation and
   const snapshot = `import sqlite3,sys,json
 c=sqlite3.connect(sys.argv[1]);out={}
 for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_works_v%' AND name != 'payload_migrations' ORDER BY name"):
- cols=sorted(r[1] for r in c.execute('PRAGMA table_info("'+name+'")') if not (name=='works' and r[1]=='_status') and not r[1].endswith('deleted_at'))
+ cols=sorted(r[1] for r in c.execute('PRAGMA table_info("'+name+'")') if not (name=='works' and r[1] in ('_status','cloud')) and not r[1].endswith('deleted_at'))
  out[name]=sorted(c.execute('SELECT '+','.join('"'+v+'"' for v in cols)+' FROM "'+name+'"').fetchall(),key=repr)
 print(json.dumps(out,ensure_ascii=False,sort_keys=True))`
   try {
@@ -72,7 +72,7 @@ c.commit();print('null')`)
     assert.deepEqual(python(snapshot), before, 'interrupted replacement must roll back every existing row')
     assert.equal(python("import sqlite3,sys,json;c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute(\"SELECT count(*) FROM sqlite_master WHERE type='table' AND name LIKE '_works_v%'\").fetchone()[0]))"), 0)
     // This regression isolates draft/trash schema upgrades; rating conversion has its own suite.
-    await payload.db.migrate({ migrations: migrations.slice(0, -1).map(migration => ({ name: migration.name, up: args => migration.up(args as MigrateUpArgs), down: args => migration.down(args as MigrateDownArgs) })) })
+    await payload.db.migrate({ migrations: migrations.filter(migration => migration.name !== '20261028_120000_rating_scale_100').map(migration => ({ name: migration.name, up: args => migration.up(args as MigrateUpArgs), down: args => migration.down(args as MigrateDownArgs) })) })
     assert.deepEqual(python(snapshot), before, 'all original table values, IDs, array and lock references must survive')
     const publicWork = await payload.findByID({ collection: 'works', id: 41, draft: true, depth: 0 })
     assert.equal(publicWork._status, 'published')
@@ -114,11 +114,11 @@ c.commit();print('null')`)
     assert.deepEqual(python("import sqlite3,sys,json;c=sqlite3.connect(sys.argv[1]);print(json.dumps(c.execute('PRAGMA foreign_key_check').fetchall()))"), [])
     const db = payload.db as unknown as SQLiteAdapter
     const { generateDrizzleJson, generateMigration } = db.requireDrizzleKit()
-    const schema = JSON.parse(await readFile(new URL('../../src/migrations/20261022_050000_content_trash.json', import.meta.url), 'utf8'))
+    const schema = JSON.parse(await readFile(new URL('../../src/migrations/20261121_040935_cloud_flag.json', import.meta.url), 'utf8'))
     assert.deepEqual(await generateMigration(schema, await generateDrizzleJson(db.schema)), [])
     const beforeRepeat = python(snapshot)
     // This regression isolates draft/trash schema upgrades; rating conversion has its own suite.
-    await payload.db.migrate({ migrations: migrations.slice(0, -1).map(migration => ({ name: migration.name, up: args => migration.up(args as MigrateUpArgs), down: args => migration.down(args as MigrateDownArgs) })) })
+    await payload.db.migrate({ migrations: migrations.filter(migration => migration.name !== '20261028_120000_rating_scale_100').map(migration => ({ name: migration.name, up: args => migration.up(args as MigrateUpArgs), down: args => migration.down(args as MigrateDownArgs) })) })
     assert.deepEqual(python(snapshot), beforeRepeat, 'repeat migration is a no-op for all data, including synthetic API identities')
     await assert.rejects(draftMigration.down({} as never), /Preserve Work drafts/)
   } finally { await payload?.destroy(); await rm(directory, { recursive: true, force: true }) }
