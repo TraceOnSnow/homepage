@@ -168,7 +168,7 @@ social:
     icon: ri:github-fill # Remix Icon 的 GitHub 图标
     color: '#191717' # (可选) 图标颜色
   email:
-    url: mailto:zhihengw02@outlook.com # 替换为你的邮箱，需加 mailto: 前缀
+    url: mailto:me@traceonsnow.com # 公开邮箱，经 Cloudflare Email Routing 转发；不放实名邮箱
     icon: ri:mail-line
     color: '#55acd5'
   rss:

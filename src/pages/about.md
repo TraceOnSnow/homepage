@@ -13,5 +13,4 @@ description: "TraceOnSnow 的个人网站"
 ### 找到我
 
 - [GitHub](https://github.com/TraceOnSnow)
-- [LinkedIn](https://www.linkedin.com/in/zhihengwang02/)
-- [Email](mailto:zhihengw02@outlook.com)
+- [Email](mailto:me@traceonsnow.com)
