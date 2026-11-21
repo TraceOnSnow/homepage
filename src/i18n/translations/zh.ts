@@ -49,6 +49,10 @@ export const uiStrings = {
   'library.sort.title': '标题',
   'projects.title': '项目',
   'projects.open': '访问项目：{title}',
+  'projects.built': '做了什么',
+  'projects.challenge': '难点',
+  'projects.stack': '技术栈',
+  'projects.earlier': '早期尝试',
 
   // Index pages
   'index.posts': '篇文章',
