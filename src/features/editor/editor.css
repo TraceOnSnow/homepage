@@ -429,21 +429,6 @@
   color: hsl(var(--muted-foreground));
   font-variant-numeric: tabular-nums;
 }
-.editor-status a {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  border-radius: 4px;
-  color: hsl(var(--muted-foreground));
-  transition: color 160ms var(--ease-out-quart);
-}
-.editor-status a:hover {
-  color: hsl(var(--primary));
-}
-.editor-status a svg {
-  width: 13px;
-  height: 13px;
-}
 .editor-mobile-tabs {
   display: none;
 }

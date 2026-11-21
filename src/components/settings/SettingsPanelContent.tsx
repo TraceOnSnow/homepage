@@ -143,7 +143,7 @@ export default function SettingsPanelContent() {
   const [section, setSection] = useState<SettingSection>('general');
   useEffect(() => {
     if (!open) return;
-    setSection(document.querySelector('[data-pagefind-body]') ? 'reader' : 'general');
+    setSection(document.querySelector('[data-reader-content]') ? 'reader' : 'general');
   }, [open]);
 
   // floating-ui: dismiss on ESC / outside click

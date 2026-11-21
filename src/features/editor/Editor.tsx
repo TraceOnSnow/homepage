@@ -612,10 +612,6 @@ export default function Editor({ ogEndpoint = '/api/editor/og', colophon = [] }:
       </div>
       <footer className="editor-status">
         <span>{draft.source.length.toLocaleString()} 字符</span>
-        <a href="/post/note/shoka-features" target="_blank" rel="noreferrer">
-          Shoka 语法演示
-          <EditorIcon name="external" />
-        </a>
       </footer>
       <nav className="editor-mobile-tabs" aria-label="写作室导航">
         <ViewSwitch
