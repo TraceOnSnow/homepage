@@ -8,7 +8,7 @@
 
 ## 项目页说明与截图（2026-11-21，Asia/Shanghai）
 
-`/projects` 改为详细卡片：NanoParty、SteamGuess、TraceFlow 个人内容系统、HearthGen 各有截图、做了什么、难点与处理方式、技术栈和链接；hayaku-shelf、manboard、manbo-agent 放在“早期尝试”。项目数据仍在 `src/data/projects.ts`，新增的都是可选字段，没有新服务或迁移，编辑方式见 [项目展示](projects.md)。截图为 webp，放在 `public/img/projects/`。验证：变更文件 Biome 与全量 `pnpm lint` 通过（7 条已有 infos）；隔离端口 Astro dev（`CONTENT_SOURCE=files`）下 390／1280 宽无横向溢出，7 个项目的封面链接与 `url` 一致，4 张截图加载正常，深色模式正常；控制台仅有已存在的 ThemeToggle `title` 水合提示。未在服务器跑完整构建和 `pnpm test:reading:browser`，交给 CI。
+`/projects` 改为详细卡片：NanoParty、SteamGuess、TraceFlow 个人内容系统、chatgpt-pipeline、HearthGen、Atlink 各有做了什么、难点与处理方式、技术栈和链接；hayaku-shelf、manboard、manbo-agent 放在“早期尝试”。文案按本人确认：HearthGen 按个人项目写（2026.1–2026.4），manbo-agent 按仓库实际技术栈写，Atlink 标明团队项目、只列本人负责部分，对外名称用 TraceFlow。项目数据仍在 `src/data/projects.ts`，新增的都是可选字段，没有新服务或迁移，编辑方式见 [项目展示](projects.md)。截图为 webp，放在 `public/img/projects/`；NanoParty 截图用其最新 main 在本机回环端口的测试实例（模拟模型、三名测试玩家）重拍，之后已停止该实例。验证：变更文件 Biome 与全量 `pnpm lint` 通过；隔离端口 Astro dev（`CONTENT_SOURCE=files`）下 390／1280 宽无横向溢出，9 个项目的封面链接与 `url` 一致，截图加载正常，深色模式正常；控制台仅有已存在的 ThemeToggle `title` 水合提示。未在服务器跑完整构建和 `pnpm test:reading:browser`，交给 CI。
 
 ## 作品「云」标记（2026-11-21，America/Chicago）
 

@@ -18,7 +18,7 @@
 - `links`：额外链接（在线地址、GitHub 等）。
 - `article`：可选的已发布文章固定链接，不含 `/post/`。例如文章地址为 `/post/building-my-app` 时填写 `article: 'building-my-app'`。
 
-截图只拍公开页面，不拍需要登录或带邀请凭证的页面。NanoParty 的截图来自仓库本地测试房间（测试玩家、模拟模型），SteamGuess 与媒体库截图来自线上公开页，HearthGen 用的是仓库 `results/` 中提交的生成原画。
+截图只拍公开页面，不拍需要登录或带邀请凭证的页面。NanoParty 的截图来自其最新 main（269ccd4）在本机回环地址启动的测试实例：三名测试玩家的「数牌拆拼」对局、模拟模型，取非房主视角，画面不含邀请链接；SteamGuess 与媒体库截图来自线上公开页，HearthGen 用的是仓库 `results/` 中提交的生成原画。chatgpt-pipeline 的网页工作台只显示私人材料，Atlink 没有在线实例，两者暂用文字占位封面。
 
 文章从当前选定的 `CONTENT_SOURCE` 读取，不另存正文；标题和地址随正常构建更新。没有关联、文章不存在或尚未发布时不显示开发文章入口。
 

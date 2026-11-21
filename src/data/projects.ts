@@ -37,13 +37,14 @@ export const projects: Project[] = [
     featured: true,
     meta: '个人项目 · 2026.11 起',
     description:
-      '自部署的网页聚会游戏房间：2–8 位朋友一边语音，一边在网页上答题、投票；右侧是共享群聊、AI 主持和积分榜。目前有 25 款规则自定的小游戏，不配置模型也能完整游玩。',
+      '自部署的网页聚会游戏房间：朋友们一边语音，一边用手机或电脑进同一个房间，玩猜词、诈唬、投票、卡牌和骰子游戏；右侧是共享群聊、AI 主持和积分榜。目前有 39 款规则自定的游戏，不配置模型也能完整游玩，另有不需要服务器的静态试玩版。',
     url: 'https://github.com/TraceOnSnow/NanoParty',
     cover: '/img/projects/nanoparty.webp',
-    coverAlt: 'NanoParty 本地测试房间的选题界面：左侧是游戏主面板，右侧是派对积分和群聊',
+    coverAlt: 'NanoParty 本地测试房间里的三人「数牌拆拼」对局：桌上已有六组牌，下方是自己的手牌，右侧是派对积分和群聊',
     built: [
       '房间平台：邀请加入、群聊、断线重连和服务重启后恢复；游戏内成绩和派对积分分两本账，由房主确认入账。',
-      '25 款游戏模块：每款是一组纯函数状态机（setup / apply / view），规则不调用模型。',
+      '39 款游戏模块：每款是一组纯函数状态机（setup / apply / view），不做 IO、不读时钟、不调用模型；加一款游戏不需要改房间、网络和数据库。',
+      '静态试玩版：同一套游戏打包成纯静态页面，可以和脚本玩家试玩；线下聚会时几台手机输入同一个房间号，就能拿到同一套题和各自的身份。',
       'AI 主持与裁判：主持通过受控工具在主面板发起推荐、投票和出题；海龟汤由单独的 AI 裁判判定，判错可以标记、重判。',
       '测试工具：一个人开多人测试房间、走真实 HTTP + WebSocket 的场景脚本、多浏览器验收和真实模型评测。',
     ],
@@ -65,14 +66,14 @@ export const projects: Project[] = [
     ],
     links: [
       { label: 'GitHub', url: 'https://github.com/TraceOnSnow/NanoParty' },
-      { label: '线上实例（需邀请）', url: 'https://nanoparty.traceonsnow.com' },
+      { label: '静态试玩版', url: 'https://party.traceonsnow.com' },
     ],
   },
   {
     slug: 'steamguess',
     title: 'SteamGuess',
     featured: true,
-    meta: '个人项目 · 2026.01 起',
+    meta: '个人项目 · 2026.1 起',
     description:
       '十次机会猜出一款 Steam 游戏。每猜一次，按价格、单日峰值、评测数、好评率、发行时间、开发商和标签逐项比较，颜色表示接近程度，箭头指出方向。支持每日挑战、自由练习和 2–8 人房间。',
     url: 'https://steamguess.traceonsnow.com',
@@ -112,7 +113,7 @@ export const projects: Project[] = [
     ],
     challenge: {
       title: '两端都能编辑时，不能静默覆盖',
-      body: 'Obsidian 和 Payload 后台都能改同一条内容。同步时用当前文件哈希、共同基线和远端版本判断哪一端改过：两端都改就保留冲突等人处理；写入后回读成功才推进基线，超时先对账再重试；扫描时找不到文件也不推断为删除。聊天整理管线也按同样思路分工：模型只写正文，编号、来源关系和一致性校验交给程序。',
+      body: 'Obsidian 和 Payload 后台都能改同一条内容。同步时用当前文件哈希、共同基线和远端版本判断哪一端改过：两端都改就保留冲突等人处理；写入后回读成功才推进基线，超时先对账再重试；扫描时找不到文件也不推断为删除。',
     },
     stack: ['Python', 'TypeScript', 'Astro', 'Payload CMS', 'SQLite', 'MCP', 'Obsidian', 'Docker', 'Nginx'],
     links: [
@@ -123,10 +124,31 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: 'chatgpt-pipeline',
+    title: 'chatgpt-pipeline',
+    featured: true,
+    meta: '个人项目 · 2026.10 起',
+    description:
+      'TraceFlow 中负责历史聊天的部分：把 ChatGPT 导出整理成可以继续写作的 Markdown 笔记。先验证来源、筛选候选，再生成初稿、独立复核，最后在网页上明确点击导入才写进内容库。生成不等于入库，入库也不等于发表。',
+    url: 'https://github.com/TraceOnSnow/chatgpt-pipeline',
+    built: [
+      '来源验证与索引：读取官方导出 ZIP 或上传记录，记下文件、账号、会话和消息的指纹，离线建 SQLite 索引；不解压媒体，附件和无法识别的结构记为缺口。',
+      '分阶段调用模型：筛选、初稿、复核分开进行，每个目标最多两次调用，每次输出不超过 8,000 token，每个批次有累计预算。',
+      '本地网页工作台：浏览候选、发起生成、查看复核结论，默认只读，导入需要明确操作。',
+      '入库去重：按来源身份复用已有笔记，重复导入不覆盖之后的手动修改。',
+    ],
+    challenge: {
+      title: '模型调用会失败、超时，也可能重复收费',
+      body: '每次调用先在账本里占用预算，原始回复先存盘再解析。有调用记录却没有回复时先对账，不自动重发；重启后优先离线恢复已有回复，换目录或改任务身份也绕不开账本。空回复、只有标题、输出截断或供应商报错都不算完成；正文完整但复核没通过的稿件保留下来等人工确认。模型只写正文，标题、来源编号和哈希由程序维护。',
+    },
+    stack: ['Python', 'SQLite', 'OpenRouter', 'HTML / JavaScript', 'unittest'],
+    links: [{ label: 'GitHub', url: 'https://github.com/TraceOnSnow/chatgpt-pipeline' }],
+  },
+  {
     slug: 'hearthstone-card-generator',
     title: 'HearthGen',
     featured: true,
-    meta: '课程小组项目 · 2026 春',
+    meta: '个人项目 · 2026.1 – 2026.4',
     description:
       '输入一句 DIY 卡牌想法，生成炉石风格的卡牌设计、原画和合成卡面。官方卡牌数据先整理成结构化语义和知识图谱，用来检索参考卡牌，再由 LoRA 微调的 Stable Diffusion 生成原画。',
     url: 'https://github.com/TraceOnSnow/HearthstoneCardGenerator',
@@ -146,6 +168,38 @@ export const projects: Project[] = [
     links: [{ label: 'GitHub', url: 'https://github.com/TraceOnSnow/HearthstoneCardGenerator' }],
   },
   {
+    slug: 'atlink',
+    title: 'Atlink',
+    featured: true,
+    meta: '团队项目 · 2026.3 – 2026.4',
+    description:
+      '短链接服务：把长网址换成短别名，访问时跳回原地址，支持自定义别名、过期时间和链接管理。React 前端加 Spring Boot 后端，Redis 做缓存，Google Cloud Bigtable 做持久存储。这是团队项目，下面只列我负责的部分。',
+    url: 'https://github.com/TraceOnSnow/Atlink',
+    built: [
+      '前端 MVP：创建链接、链接列表、链接详情、仪表盘和设置页，以及统一的 API 调用层。',
+      '鉴权与限流：链接管理接口改用 JWT，未登录不能创建链接；用 Redis 按分钟或小时计数，注册、登录、建链和跳转超出次数返回 429。',
+      '本地全链路测试脚本：启动 Bigtable 模拟器和后端，依次检查注册、登录、限流、未登录拒绝、建链、列表、详情和跳转。',
+      '部署：后端放在不公开的 Cloud Run 服务上，前端部署到 Vercel，由 Vercel 函数转发 /api 和 /r 请求。',
+    ],
+    challenge: {
+      title: '后端不公开，浏览器怎么访问',
+      body: 'Cloud Run 服务只接受带 Google 身份令牌的请求，服务账号不能放进浏览器。做法是在 Vercel 上写一个代理函数：用服务账号换取身份令牌并缓存约 50 分钟，把 /api 和 /r 请求连同查询参数转发给后端，去掉逐跳请求头；转发时不自动跟随重定向，短链接的 302 原样返回给浏览器。',
+    },
+    stack: [
+      'Java 21',
+      'Spring Boot',
+      'Spring Security',
+      'JWT',
+      'Redis',
+      'Bigtable',
+      'React',
+      'TypeScript',
+      'Cloud Run',
+      'Vercel',
+    ],
+    links: [{ label: 'GitHub', url: 'https://github.com/TraceOnSnow/Atlink' }],
+  },
+  {
     slug: 'hayaku-shelf',
     title: 'hayaku-shelf',
     description:
@@ -163,7 +217,7 @@ export const projects: Project[] = [
     slug: 'manbo-agent',
     title: 'manbo-agent',
     description:
-      '个人信息流 Agent：从 RSS 和网页收集文章，经正文解析、过滤和 LLM 分析，生成 Markdown 笔记与日报（Python、SQLite）。',
+      '个人信息流 Agent：从 RSS 和网页收集文章，经正文解析、过滤和 LLM 分析，写成 Markdown 笔记和日报，并提供一个只读 API（Python、FastAPI、SQLite）。',
     url: 'https://github.com/TraceOnSnow/manbo-agent',
   },
 ];
