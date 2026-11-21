@@ -74,6 +74,15 @@ const enabledI18nLocales = (i18nYaml?.locales ?? [{ code: 'zh' }])
   .filter((locale) => locale.enabled !== false)
   .map((locale) => locale.code);
 
+// Keep noindex tools and disabled-feature redirect stubs out of the sitemap.
+const sitemapExcludedPaths = ['/editor', ...(yamlConfig.bangumi ? [] : ['/bangumi'])];
+const isSitemapPage = (page) => {
+  const pathname = new URL(page).pathname;
+  const localeMatch = pathname.match(/^\/([^/]+)(\/.*)?$/);
+  const unprefixed = localeMatch && enabledI18nLocales.includes(localeMatch[1]) ? (localeMatch[2] ?? '/') : pathname;
+  return !sitemapExcludedPaths.some((excluded) => unprefixed === excluded || unprefixed.startsWith(`${excluded}/`));
+};
+
 const featuredSeries = normalizeFeaturedSeries(yamlConfig.featuredSeries, {
   categoryMap: yamlConfig.categoryMap,
   reservedRoutes: RESERVED_ROUTES,
@@ -280,7 +289,7 @@ export default defineConfig({
       },
     },
     react(),
-    sitemap(),
+    sitemap({ filter: isSitemapPage }),
     icon({
       include: Object.fromEntries(BUNDLED_ICON_SETS.map((set) => [set, ['*']])),
     }),
