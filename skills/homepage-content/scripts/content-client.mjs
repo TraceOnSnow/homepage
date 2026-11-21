@@ -24,6 +24,7 @@ const workFields = [
   'sources',
   'rating',
   'status',
+  'cloud',
   'tags',
   'note',
   'article',
@@ -229,7 +230,7 @@ async function importWorks(file, apply, request) {
         current.visibility !== data.visibility
       )
         throw Error('Created Work readback did not match');
-      if (['rating', 'status', 'note'].some((field) => Object.hasOwn(data, field) && current[field] !== data[field]))
+      if (['rating', 'status', 'cloud', 'note'].some((field) => Object.hasOwn(data, field) && current[field] !== data[field]))
         throw Error('Created Work personal fields did not match');
       if (!identities(data).every((key) => identities(current).includes(key)))
         throw Error('Created Work sources did not match');
@@ -441,6 +442,7 @@ export async function runCLI(argv, request) {
     for (const field of [
       'rating',
       'status',
+      'cloud',
       'note',
       'tags',
       'article',

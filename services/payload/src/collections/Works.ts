@@ -39,7 +39,10 @@ export const Works: CollectionConfig = {
     } },
     { name: 'title', label: {zh: '标题', en: 'Title'}, type: 'text', required: true }, slug,
     { name: 'rating', label: {zh: '个人评分（满分100）', en: 'Rating (out of 100)'}, type: 'number', min: 0, max: 100, admin: { step: 1, description: { zh: '个人评分，0–100，100 满分；未评分时留空。', en: 'Personal rating, 0–100 (out of 100); leave blank if unrated.' } } },
-    { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'completed' }, tags,
+    { name: 'status', label: {zh: '状态', en: 'Status'}, type: 'select', options: statusOptions, defaultValue: 'completed' },
+    { name: 'cloud', label: {zh: '云', en: 'Secondhand'}, type: 'checkbox', defaultValue: false, admin: {
+      description: { zh: '看别人的实况、解说体验的（云玩家、云通关），与状态无关；卡片右上角显示云朵。', en: 'Experienced secondhand through a playthrough or recap, independent of status; shown as a cloud on the card.' },
+    } }, tags,
     { name: 'note', label: {zh: '短感受', en: 'Short reaction'}, type: 'textarea', admin: {
       components: { Field: '/components/admin/ReactionField#ReactionField' },
       description: { zh: '一句话感受，也可记录“第八集”“二周目通关”等。留空时显示关联文章标题，不自动改写内容。', en: 'A reaction or progress note, e.g. episode 8 or second playthrough. Empty reactions display the linked article title.' },

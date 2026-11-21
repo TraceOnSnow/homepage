@@ -36,6 +36,21 @@ test('table patches keep historic dates, IDs, notes and progress, and preserve r
   assert.throws(() => workPatch(work, { ...values, endedOn: '2023-02-29' }), /时间/)
 })
 
+test('云 is a table field: unset reads as unchecked, toggling sends only the flag, and it counts as a card update', () => {
+  const work: TableWork = {
+    id: 2, title: 'Watched playthrough', slug: 'watched-playthrough', type: 'game', visibility: 'public', _status: 'published',
+    status: 'completed', createdAt: '2020-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+  }
+  const values = workValues(work)
+  assert.equal(values.cloud, false)
+  assert.deepEqual(workPatch(work, values), {})
+  assert.deepEqual(workPatch(work, { ...values, cloud: true }), { cloud: true })
+  assert.deepEqual(workPatch({ ...work, cloud: true }, { ...values, cloud: false }), { cloud: false })
+  assert.equal(hasPublicWorkTableUpdate(work, { ...work, cloud: true }), true)
+  assert.equal(workPublicationData({ ...work, cloud: true }).cloud, true)
+  assert.equal(workTablePublicationBlock({ ...work, cloud: true }, work), undefined)
+})
+
 const published: TableWork = {
   id: 9, title: 'Published work', slug: 'published-work', type: 'book', visibility: 'public',
   _status: 'published', note: 'Old public reaction', rating: 0,

@@ -37,6 +37,8 @@ export const uiStrings: UIStrings = {
   'library.completed.tv': 'Finished',
   'library.completed.book': 'Read',
   'library.on-hold': 'On hold',
+  'library.cloud': 'Secondhand',
+  'library.cloud.hint': 'Experienced secondhand, through a playthrough or a recap',
   'library.dropped': 'Dropped',
   'library.articles': 'Related articles',
   'library.reflections': 'With reflections',

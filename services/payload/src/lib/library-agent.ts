@@ -10,7 +10,7 @@ const textFields = ['title', 'slug', 'coverUrl', 'releaseDate', 'description', '
 const stringArrays = ['aliases', 'creators', 'platforms', 'tags']
 const sourceFields = ['id', 'provider', 'externalId', 'url', 'fetchedAt']
 const experienceFields = ['id', 'status', 'startedOn', 'endedOn', 'platform', 'progress', 'note']
-const dataFields = [...textFields, ...stringArrays, 'type', 'generateSlug', 'cover', 'article', 'rating', 'sources', 'experiences']
+const dataFields = [...textFields, ...stringArrays, 'type', 'generateSlug', 'cover', 'article', 'rating', 'cloud', 'sources', 'experiences']
 let mutationQueue: Promise<void> = Promise.resolve()
 // Serialize Agent mutations within this process. The timestamp Where below also
 // detects already-committed admin edits; Payload itself does not promise a SQL CAS.
@@ -59,6 +59,7 @@ function data(value: unknown): RecordValue {
   }
   if ('type' in result) type(result.type)
   if ('generateSlug' in result && typeof result.generateSlug !== 'boolean') throw new InputError('Invalid slug option')
+  if ('cloud' in result && result.cloud !== null && typeof result.cloud !== 'boolean') throw new InputError('Invalid cloud flag')
   if ('rating' in result && result.rating !== null && (typeof result.rating !== 'number' || !Number.isFinite(result.rating))) throw new InputError('Invalid rating')
   // Native drafts allow incomplete fields. Keep the old capability's explicit
   // rating/URL/status validation while changing its writes to private drafts.

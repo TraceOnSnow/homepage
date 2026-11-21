@@ -31,6 +31,17 @@ export function LibraryCard({ item, locale, timeZone }: { item: LibraryWork; loc
             {t(statusLabelKey(item.status, item.type))}
           </span>
         )}
+        {item.cloud && (
+          <span className="bangumi-cloud" title={t('library.cloud.hint')}>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+              <path
+                fill="currentColor"
+                d="M17 7a8 8 0 0 0-7.493 5.19l1.874.703A6.002 6.002 0 0 1 23 15a6 6 0 0 1-6 6H7A6 6 0 0 1 5.008 9.339a7 7 0 0 1 13.757-2.143A8 8 0 0 0 17 7"
+              />
+            </svg>
+            <span className="sr-only">{t('library.cloud')}</span>
+          </span>
+        )}
       </div>
       <h2 className="bangumi-title" title={item.title}>
         {item.title}

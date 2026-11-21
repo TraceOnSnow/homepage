@@ -158,8 +158,11 @@ try {
       if (type === 'movie' || type === 'boardgame') {
         await expect(shelf.locator('[data-library-status]')).toHaveCount(0);
         await expect(shelf.locator('.bangumi-ribbon')).toHaveCount(0);
+        // 云 is independent of status: the film carries the cloud badge without a status ribbon.
+        await expect(shelf.locator('.bangumi-cloud')).toHaveCount(type === 'movie' ? 1 : 0);
       } else {
         await expect(shelf.locator('[data-library-status="all"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(shelf.locator('.bangumi-cloud')).toHaveCount(0);
       }
     }
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));

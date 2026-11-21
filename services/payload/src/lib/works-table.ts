@@ -3,7 +3,7 @@ import { experienceDateInput, isExperienceDate } from './experience'
 
 export type TableWork = Omit<Work, 'article'> & { article?: number | null }
 export type WorkValues = {
-  status: string; rating: string; startedOn: string; endedOn: string
+  status: string; cloud: boolean; rating: string; startedOn: string; endedOn: string
   note: string; article: number | null; visibility: string
 }
 
@@ -19,7 +19,7 @@ export function workPublicationLabel(latest: TableWork, published: TableWork): s
 /** Publishing/withdrawing must carry the latest draft, never just flip the base status. */
 export function workPublicationData(work: TableWork): Partial<Work> {
   const fields: (keyof Work)[] = [
-    'title', 'slug', 'type', 'rating', 'status', 'tags', 'note', 'article', 'experiences', 'aliases',
+    'title', 'slug', 'type', 'rating', 'status', 'cloud', 'tags', 'note', 'article', 'experiences', 'aliases',
     'cover', 'coverUrl', 'releaseDate', 'creators', 'platforms', 'description', 'sources', 'visibility',
   ]
   return Object.fromEntries(fields.filter(key => work[key] !== undefined).map(key => [key, work[key]]))
@@ -36,7 +36,7 @@ export function sameWorkField(left: unknown, right: unknown): boolean {
 /** Quick synchronization excludes unrelated edits left in a drawer. */
 export function workTablePublicationBlock(latest: TableWork, published: TableWork): string | undefined {
   if (published._status !== 'published') return
-  const personal = new Set(['rating', 'status', 'note', 'article', 'visibility', 'experiences'])
+  const personal = new Set(['rating', 'status', 'cloud', 'note', 'article', 'visibility', 'experiences'])
   const latestData = workPublicationData(latest)
   const baseData = workPublicationData(published)
   const changed = Object.keys({ ...baseData, ...latestData }).filter(key => !personal.has(key)
@@ -62,7 +62,7 @@ export function hasPublicWorkTableUpdate(latest: TableWork, published: TableWork
 export function workValues(work: TableWork): WorkValues {
   const last = work.experiences?.at(-1)
   return {
-    status: work.status || '', rating: work.rating == null ? '' : String(work.rating),
+    status: work.status || '', cloud: Boolean(work.cloud), rating: work.rating == null ? '' : String(work.rating),
     startedOn: experienceDateInput(last?.startedOn), endedOn: experienceDateInput(last?.endedOn),
     note: work.note || '', article: work.article ?? null, visibility: work.visibility,
   }
@@ -73,6 +73,7 @@ export function workPatch(work: TableWork, values: WorkValues): Partial<Work> {
   const original = workValues(work)
   const patch: Partial<Work> = {}
   if (values.status !== original.status) patch.status = (values.status || null) as Work['status']
+  if (values.cloud !== original.cloud) patch.cloud = values.cloud
   if (values.rating !== original.rating) {
     if (values.rating.trim() && (!Number.isFinite(Number(values.rating)) || Number(values.rating) < 0 || Number(values.rating) > 100)) throw Error('评分须为 0–100，未评分请留空。')
     patch.rating = values.rating.trim() ? Number(values.rating) : null

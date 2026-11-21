@@ -164,6 +164,20 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'trashed content'):
             deployer.check_release_compatibility(self.database, {'001_initial': 'source', deployer.WORKS_DRAFT_MIGRATION: 'source'})
 
+    def test_cloud_schema_or_record_blocks_release_without_cloud_migration(self):
+        self.migrated_works()
+        target = {'001_initial': 'source', deployer.WORKS_DRAFT_MIGRATION: 'source'}
+        with sqlite3.connect(self.database) as db:
+            db.execute('ALTER TABLE works ADD COLUMN cloud integer DEFAULT false')
+        with self.assertRaisesRegex(ValueError, 'flags'):
+            deployer.check_release_compatibility(self.database, target)
+        with sqlite3.connect(self.database) as db:
+            db.execute('INSERT INTO payload_migrations(name) VALUES (?)', (deployer.CLOUD_FLAG_MIGRATION,))
+        with self.assertRaisesRegex(ValueError, 'flags'):
+            deployer.check_release_compatibility(self.database, target)
+        target[deployer.CLOUD_FLAG_MIGRATION] = 'source'
+        deployer.check_release_compatibility(self.database, target)
+
     def test_failed_upgrade_keeps_compatible_app_and_blocks_legacy_rollback(self):
         self.migrated_works()
         def fail():
