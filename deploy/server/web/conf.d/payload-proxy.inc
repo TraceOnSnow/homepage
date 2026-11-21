@@ -13,3 +13,6 @@ proxy_send_timeout 120s;
 proxy_buffering off;
 add_header Cache-Control "no-store" always;
 add_header X-Content-Type-Options nosniff always;
+# Payload itself already sends Referrer-Policy; only HSTS is added here, because the
+# add_header lines above cancel the server-level ones for these locations.
+include /etc/nginx/conf.d/hsts.inc;
