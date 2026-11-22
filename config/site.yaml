@@ -636,43 +636,38 @@ comment:
   #   inputPosition: top               # 输入框位置 ('top' | 'bottom')
   #   lang: zh-CN                      # 语言
 
-  # waline:
-  #   serverURL: https://your-waline.vercel.app  # Waline 服务端地址 (必填)
-  #   lang: zh-CN                      # 语言 (默认: 'zh-CN')
-  #   dark: html.dark                  # 暗黑模式 (默认: 'html.dark')
-  #                                    # 可选: true (自适应) | false (禁用) | CSS选择器字符串
-  #   meta:                            # 评论者信息字段 (默认: ['nick', 'mail', 'link'])
-  #     - nick
-  #     - mail
-  #     - link
-  #   requiredMeta:                    # 必填字段 (默认: [])
-  #     - nick
-  #   login: enable                    # 登录模式 ('enable' | 'disable' | 'force', 默认: 'enable')
-  #   wordLimit: 0                     # 评论字数限制 (0 = 无限制, 默认: 0)
-  #                                    # 可选: 单个数字 | [min, max] 数组
-  #   pageSize: 10                     # 每页评论数 (默认: 10)
-  #   imageUploader: false             # 图片上传功能 (默认: false)
-  #   highlighter: true                # 代码高亮 (默认: true)
-  #   texRenderer: false               # LaTeX 渲染 (默认: false)
-  #   search: false                    # 搜索功能 (默认: false)
-  #   reaction: false                  # 文章反应功能 (默认: false)
-  #                                    # 可选: true | false | 字符串数组 (自定义反应图标)
-  #   emoji: true                      # 表情包配置 (默认: ['//unpkg.com/@waline/emojis@1.2.0/weibo'])
-  #                                    # 可选: true | false | 字符串/对象数组
-  #                                    # 预设表情包: '//unpkg.com/@waline/emojis@1.2.0/weibo'
-  #                                    #           '//unpkg.com/@waline/emojis@1.2.0/alus'
-  #                                    #           '//unpkg.com/@waline/emojis@1.2.0/bilibili'
-  #                                    #           '//unpkg.com/@waline/emojis@1.2.0/qq'
-  #                                    #           '//unpkg.com/@waline/emojis@1.2.0/tieba'
-  #                                    #           '//unpkg.com/@waline/emojis@1.2.0/tw-emoji'
-  #   commentSorting: latest           # 评论排序 ('latest' | 'oldest' | 'hottest', 默认: 'latest')
-  #   noCopyright: false               # 隐藏页脚版权信息 (默认: false)
-  #   comment: true                    # 评论数统计 (默认: true)
-  #   pageview: true                   # 页面访问量统计 (默认: true)
-  #   # recaptchaV3Key: ''             # reCAPTCHA v3 Key (可选)
-  #   # turnstileKey: ''               # Cloudflare Turnstile Key (可选)
-  #   # locale:                        # 自定义语言显示 (可选)
-  #   #   placeholder: '请留言...'      # 自定义输入框占位文本
+  # Waline（自托管，2026-11-21 预备，尚未启用）
+  # 只有把上面的 provider 改成 waline 才会生效；provider 为 none 时主题不读取本段，站点行为不变。
+  # 启用前提：comments.traceonsnow.com 的 Waline 服务已上线、管理员账号已注册。
+  # 服务端文件与步骤：/home/trace/projects/homepage-research-20261121/waline/说明.md
+  waline:
+    serverURL: https://comments.traceonsnow.com  # 独立子域名（官方文档未给出子路径部署说明）
+    lang: zh-CN                      # 语言
+    dark: html.dark                  # 跟随站点暗色模式
+    meta:                            # 评论者信息字段
+      - nick
+      - mail
+      - link
+    requiredMeta:                    # 只要求昵称，可匿名评论
+      - nick
+    login: enable                    # 匿名或登录均可 ('enable' | 'disable' | 'force')
+    wordLimit: 0                     # 字数不限
+    pageSize: 10                     # 每页评论数
+    imageUploader: false             # 不允许上传图片
+    highlighter: true                # 代码高亮
+    texRenderer: false               # 不渲染 LaTeX
+    search: false                    # 关闭表情搜索
+    reaction: false                  # 关闭文章反应
+    emoji: true                      # 默认表情包
+    commentSorting: latest           # 最新在前
+    noCopyright: false               # 保留 Waline 页脚
+    comment: true                    # 评论数统计
+    pageview: false                  # 访问统计交给 Cloudflare，不用 Waline
+    # turnstileKey: ''               # 启用前填入 Turnstile 站点公钥（可公开）；须与服务端 TURNSTILE_SECRET 同时设置
+    # 以下为主题提供的其他可选项，未使用：
+    #   recaptchaV3Key: ''           # reCAPTCHA v3 Key
+    #   locale:                      # 自定义语言显示
+    #     placeholder: '请留言...'    # 自定义输入框占位文本
   twikoo:
     envId: https://your-twikoo.vercel.app  # Twikoo 环境 ID (腾讯云) 或 Vercel 环境地址 (必填)
     # region: ap-shanghai              # 环境地域，默认为 ap-shanghai
