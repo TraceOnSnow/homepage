@@ -6,6 +6,10 @@
 
 运维入口见 [部署源码说明](../deploy/server/README.md)。Docker 本地仅保留运行版和一个兼容回退版；本次只整理文档及缓存，不切换应用版本。下面是有日期的历史交付，旧“待部署/待接通”不代表当前状态，不据此重跑迁移或安装。
 
+## 后台安全升级：Next.js 与 Payload（2026-11-28，Asia/Shanghai）
+
+`npm audit --omit=dev` 显示后台所用 Next.js 16.3.7 有两个未登录远程代码执行漏洞（图片优化接口处理 SVG、`use cache` 返回类型化数组），以及 SSRF、缓存投毒等问题，修复版本为 16.4.6。`/_next/` 经 Nginx 反代到 Payload，图片优化接口可从公网访问，后台本身不使用它。本次把 `services/payload` 升级到 Payload 3.94.2（要求 Next ≥16.4.5、React ~19.2.9）、Next 16.4.6、React 19.2.9、undici 7.30.1；原先只针对 payload 子树的 undici override 改为全局沿用根版本（`"undici": "$undici"`），按原 pin 增量安装会被锁文件卡住，所以锁文件用项目声明的 npm 11.19.0 重新生成。没有字段或迁移变化。验证：本机 typecheck、lint、51 项单元测试、13 项集成测试（临时 SQLite/媒体目录）通过，迁移检查通过；完整 `next build` 与浏览器流程交给 CI。同时把直接依赖 fast-xml-parser 升到 5.12.1（BGG 资料解析的低危 CPU 问题）。升级后后台 audit 仍有：happy-dom 高危（经 `@payloadcms/richtext-lexical` 的 HTML 转换引入，上游最新版仍未修复，只处理管理员自己的内容），以及 drizzle-kit/esbuild 等迁移工具链的中危项（不在运行时对外）。上线仍走原部署器。
+
 ## 项目页说明与截图（2026-11-21，Asia/Shanghai）
 
 `/projects` 改为详细卡片：NanoParty、SteamGuess、TraceFlow 个人内容系统、chatgpt-pipeline、HearthGen、Atlink 各有做了什么、难点与处理方式、技术栈和链接；hayaku-shelf、manboard、manbo-agent 放在“早期尝试”。文案按本人确认：HearthGen 按个人项目写（2026.1–2026.4），manbo-agent 按仓库实际技术栈写，Atlink 标明团队项目、只列本人负责部分，对外名称用 TraceFlow。项目数据仍在 `src/data/projects.ts`，新增的都是可选字段，没有新服务或迁移，编辑方式见 [项目展示](projects.md)。截图为 webp，放在 `public/img/projects/`；NanoParty 截图用其最新 main 在本机回环端口的测试实例（模拟模型、三名测试玩家）重拍，之后已停止该实例。验证：变更文件 Biome 与全量 `pnpm lint` 通过；隔离端口 Astro dev（`CONTENT_SOURCE=files`）下 390／1280 宽无横向溢出，9 个项目的封面链接与 `url` 一致，截图加载正常，深色模式正常；控制台仅有已存在的 ThemeToggle `title` 水合提示。未在服务器跑完整构建和 `pnpm test:reading:browser`，交给 CI。
